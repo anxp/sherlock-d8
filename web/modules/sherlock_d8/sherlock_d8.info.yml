@@ -1,0 +1,6 @@
+name: Sherlock
+description: Powerful fleamarket search engine
+type: module
+version: 0.1.0
+core: 8.x
+package: MAATCH
