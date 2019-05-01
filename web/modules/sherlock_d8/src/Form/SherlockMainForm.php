@@ -11,7 +11,9 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\ReplaceCommand;
+use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
 use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
+use Drupal\sherlock_d8\CoreClasses\TextUtilities\TextUtilities;
 
 class SherlockMainForm extends FormBase {
   public function getFormId() {
@@ -31,22 +33,22 @@ class SherlockMainForm extends FormBase {
       case 1:
         $form['#title'] = $this->t('What are you looking for? Create your perfect search query!');
 
-        $fleamarket_objects = SherlockDirectory::getAvailableFleamarkets(TRUE);
+        $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
 
         //Print out supported flea-markets. TODO: maybe this output better to do with theme function and template file?
-        $formatted_list = [];
+        $formattedList = [];
 
-        foreach ($fleamarket_objects as $object) {
-          $current_market_id = $object::getMarketId();
-          $current_market_name = $object::getMarketName();
-          $current_market_url = $object::getBaseURL();
-          $formatted_list[$current_market_id] = $current_market_name . ' [<a target="_blank" href="' . $current_market_url . '">' . t('Open this market\' website in new tab') . '</a>]';
+        foreach ($fleamarketObjects as $object) {
+          $currentMarketId = $object::getMarketId();
+          $currentMarketName = $object::getMarketName();
+          $currentMarketUrl = $object::getBaseURL();
+          $formattedList[$currentMarketId] = $currentMarketName . ' [<a target="_blank" href="' . $currentMarketUrl . '">' . t('Open this market\' website in new tab') . '</a>]';
         }
-        unset($object, $current_market_id, $current_market_name, $current_market_url, $fleamarket_objects);
+        unset($object, $currentMarketId, $currentMarketName, $currentMarketUrl, $fleamarketObjects);
 
         $form['resources_chooser'] = [
           '#type' => 'checkboxes',
-          '#options' => $formatted_list,
+          '#options' => $formattedList,
           '#title' => 'Choose flea-markets websites to search on',
         ];
 
@@ -58,20 +60,20 @@ class SherlockMainForm extends FormBase {
         ];
 
         //Check if form storage contains some explicitly saved user input. If not - we consider this is a new form.
-        $user_added = $form_state->get('user_added');
+        $userAdded = $form_state->get('user_added');
 
         //When user requests form first time -> we generate new block (container with one text field) and store it in $form_state['user_added']:
-        if (empty($user_added)) {
+        if (empty($userAdded)) {
           $this->newBlock($form_state);
         }
 
         //In case $form_state['user_added'] was just updated by newBlock(), get it again:
-        $user_added = $form_state->get('user_added');
+        $userAdded = $form_state->get('user_added');
 
         //If user begun to build the query, OR requested page first time (in both cases $form_state['user_added'] already exists at this point) ->
         //we show him actual content of $form_state['user_added']:
-        if(is_array($user_added) && !empty($user_added)) {
-          foreach ($user_added as $key => $value) {
+        if(is_array($userAdded) && !empty($userAdded)) {
+          foreach ($userAdded as $key => $value) {
             $form['query_constructor_block'][$key] = $value;
           }
           unset($key, $value);
@@ -176,8 +178,8 @@ class SherlockMainForm extends FormBase {
   }
 
   protected function newBlock(FormStateInterface $form_state) {
-    $user_added = $form_state->get('user_added');
-    $newBlockNo = (is_array($user_added)) ? count($user_added) : 0;
+    $userAdded = $form_state->get('user_added');
+    $newBlockNo = (is_array($userAdded)) ? count($userAdded) : 0;
 
     //Create a new empty container just with title:
     $newBlock = [
@@ -208,36 +210,36 @@ class SherlockMainForm extends FormBase {
       ],
     ];
 
-    $user_added['KEYWORD-'.$newBlockNo] = $newBlock;
-    $form_state->set('user_added', $user_added);
+    $userAdded['KEYWORD-'.$newBlockNo] = $newBlock;
+    $form_state->set('user_added', $userAdded);
   }
 
   public function btnAddvariationHandler(array &$form, FormStateInterface $form_state) {
-    $triggering_element = $form_state->getTriggeringElement();
-    $pressed_btn_name = $triggering_element['#name'] ?? '';
-    if (!((bool) strstr($pressed_btn_name, 'btn_addvariation'))) {return;}
+    $triggeringElement = $form_state->getTriggeringElement();
+    $pressedBtnName = $triggeringElement['#name'] ?? '';
+    if (!((bool) strstr($pressedBtnName, 'btn_addvariation'))) {return;}
 
-    $btn_id = (int) explode('-', $pressed_btn_name)[1];
-    $currentBlockKeywordVariations = $form_state->getValue(['query_constructor_block', 'KEYWORD-'.$btn_id, 'VALUES']);
+    $btnId = (int) explode('-', $pressedBtnName)[1];
+    $currentBlockKeywordVariations = $form_state->getValue(['query_constructor_block', 'KEYWORD-'.$btnId, 'VALUES']);
     $variationNo = is_array($currentBlockKeywordVariations) ? count($currentBlockKeywordVariations) : 0;
 
     $newfield = [
       '#type' => 'textfield',
       '#required' => TRUE,
-      '#title' => 'Variation '.$btn_id.'/'.$variationNo,
+      '#title' => 'Variation '.$btnId.'/'.$variationNo,
     ];
 
-    $user_added = $form_state->get('user_added');
-    array_push($user_added['KEYWORD-'.$btn_id]['VALUES'], $newfield);
-    $form_state->set('user_added', $user_added);
+    $userAdded = $form_state->get('user_added');
+    array_push($userAdded['KEYWORD-'.$btnId]['VALUES'], $newfield);
+    $form_state->set('user_added', $userAdded);
 
     $form_state->setRebuild();
   }
 
   public function addTermHandler(array &$form, FormStateInterface $form_state) {
-    $triggering_element = $form_state->getTriggeringElement();
-    $pressed_btn_name = $triggering_element['#name'] ?? '';
-    if ($pressed_btn_name != 'btn_addterm') {return;}
+    $triggeringElement = $form_state->getTriggeringElement();
+    $pressedBtnName = $triggeringElement['#name'] ?? '';
+    if ($pressedBtnName != 'btn_addterm') {return;}
 
     $this->newBlock($form_state);
 
@@ -245,9 +247,9 @@ class SherlockMainForm extends FormBase {
   }
 
   public function resetAllHandler(array &$form, FormStateInterface $form_state) {
-    $triggering_element = $form_state->getTriggeringElement();
-    $pressed_btn_name = $triggering_element['#name'] ?? '';
-    if ($pressed_btn_name != 'btn_reset') {return;}
+    $triggeringElement = $form_state->getTriggeringElement();
+    $pressedBtnName = $triggeringElement['#name'] ?? '';
+    if ($pressedBtnName != 'btn_reset') {return;}
 
     $form_state->set('user_added', null);
 
@@ -269,7 +271,68 @@ class SherlockMainForm extends FormBase {
   }
 
   public function previewSubmitHandler(array &$form, FormStateInterface $form_state) {
-    
+    $triggeringElement = $form_state->getTriggeringElement();
+    $pressedBtnName = $triggeringElement['#name'] ?? '';
+    if ($pressedBtnName != 'btn_preview') {return;}
+
+    $_SESSION['sherlock_d8'] = []; //Clean session from previous use.
+
+    //Get flag, which indicates - search title only or body too:
+    $checkDescriptionToo = $form_state->getValue(['additional_params', 'dscr_chk']) === 0 ? FALSE : TRUE;
+
+    //Get price limits, if they are available:
+    $enablePriceFilter = $form_state->getValue(['additional_params', 'filter_by_price']) === 0 ? FALSE : TRUE;
+    $priceFrom = ($enablePriceFilter && !empty($form_state->getValue(['additional_params', 'price_from']))) ? intval($form_state->getValue(['additional_params', 'price_from'])) : null;
+    $priceTo = ($enablePriceFilter && !empty($form_state->getValue(['additional_params', 'price_to']))) ? intval($form_state->getValue(['additional_params', 'price_to'])) : null;
+
+    //Save all block values\variations to separate array. Strictly speaking, we don't need to check if key is starts with 'KEYWORD-', because all 1st level keys are 'KEYWORD-'.
+    //But left this check just for reliability.
+    $blockValues = [];
+    foreach ($form_state->getValue('query_constructor_block') as $key => $value) {
+      if (TextUtilities::startsWith($key, 'KEYWORD-')) {
+        $blockValues[] = $value['VALUES']; //Each value of $blockValues is ARRAY with combinations of one given keyword (like sony, soni).
+      }
+    }
+
+    //Now let's request list of all resources and their settings.
+    $resourcesList = [];
+    $resourcesList = SherlockDirectory::getAvailableFleamarkets(TRUE);
+
+    //Array with all search URLs for all user-specified resources. This collection of URL we will use to cURL each of them at the next step.
+    //All values are splitted by nested arrays. Keys to nested arrays are names of the resources.
+    $constructedUrlsCollection = [];
+
+    $keywordsCombinations = BlackMagic::generateAllPossibleCombinations($blockValues);
+    $keywordsCombinationsCount = count($keywordsCombinations);
+    foreach ($form_state->getValue('resources_chooser') as $key => $value) { //$key here is flea market ID, like olx, bsp, skl
+      if ($value !== 0) { //we take into consideration only checked resources, if checkbox unchecked its value == 0
+        for ($i = 0; $i < $keywordsCombinationsCount; $i++) {
+          $constructedUrlsCollection[$key][] = $resourcesList[$key]::makeRequestURL($keywordsCombinations[$i], $priceFrom, $priceTo, $checkDescriptionToo);
+        }
+
+        //Check constructed URLs, and left only unique of them:
+        $constructedUrlsCollection[$key] = array_unique($constructedUrlsCollection[$key]);
+
+        //Save selected (ONLY SELECTED!) fleamarkets to $_SESSION,
+        //(we'll take them by ajax from there in a moment from frontend, see $items['sherlock/selected-markets'] endpoint in sherlock.module):
+        $_SESSION['sherlock_d8']['selected_markets'][] = $key;
+      }
+    }
+    unset($key, $value);
+
+    $_SESSION['sherlock_d8']['constructed_urls_collection'] = $constructedUrlsCollection;
+    $_SESSION['sherlock_d8']['price_from'] = $priceFrom;
+    $_SESSION['sherlock_d8']['price_to'] = $priceTo;
+
+    //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*- LET'S THE PARTY BEGIN! *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
+    //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
+    //At this point, we have enough info at $_SESSION['sherlock_d8'] to start fetch and parsing process:
+    //$_SESSION['sherlock_d8']['selected_markets'] contains just user-selected markets to fetch,
+    //$_SESSION['sherlock_d8']['constructed_urls_collection'] contains sub-arrays with collection of search queries for each market.
+    //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
+
+    $this->setNextStep($form_state, 2);
+    $form_state->setRebuild();
   }
 
   public function constructorBlockAjaxReturn(array &$form, FormStateInterface $form_state) {
