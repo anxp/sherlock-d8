@@ -11,8 +11,9 @@ use Drupal\sherlock_d8\CoreClasses\ArrayFiltration_2D\ArrayFiltration_2D;
 
 class BlackMagic {
   public static function generateAllPossibleCombinations (array $block_values): array {
-    //FIRST STEP: If we found string as keyword -> we explode it to array of words, so it will be more easier to implode back.
-    //If string contains only one word -> we also do array from it, just array with only one element:
+    //FIRST STEP: We parse $block_values, convert all end-values from strings to arrays, and save the result array to $block_values_rebuilt.
+    //If end-value is string with more than one keyword ->  we explode it to array of words.
+    //If end-value contains only one word -> we also do array from it, just array with only one element:
     $block_values_count = count($block_values); //Number of blocks/terms. We don't take into consideration term variations here. Just count number of blocks with term (terms variations) inside.
     $block_values_rebuilt = [];
 
