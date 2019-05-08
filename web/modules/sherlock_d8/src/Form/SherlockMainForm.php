@@ -177,7 +177,7 @@ class SherlockMainForm extends FormBase {
     return $form;
   }
 
-  protected function newBlock(FormStateInterface $form_state) {
+  protected function newBlock(FormStateInterface $form_state): void {
     $userAdded = $form_state->get('user_added');
     $newBlockNo = (is_array($userAdded)) ? count($userAdded) : 0;
 
@@ -185,6 +185,7 @@ class SherlockMainForm extends FormBase {
     $newBlock = [
       '#type' => 'fieldset',
       '#title' => 'KEYWORD-'.$newBlockNo,
+      '#attributes' => ['id' => 'KEYWORD-BLOCK-'.$newBlockNo],
     ];
 
     //Place a "Add Variation" button to this container:
@@ -203,15 +204,53 @@ class SherlockMainForm extends FormBase {
     $newBlock['VALUES'] = [
       '#type' => 'fieldset',
       '#title' => 'Keyword Variations',
-      0 => [
-        '#type' => 'textfield',
-        '#required' => TRUE,
-        '#title' => 'Variation '.$newBlockNo.'/'.'0',
-      ],
+      0 => $this->newVariationField($newBlockNo, 0),
     ];
 
     $userAdded['KEYWORD-'.$newBlockNo] = $newBlock;
     $form_state->set('user_added', $userAdded);
+  }
+
+  //This function returns a render array with new text field and attached "remove" button:
+  protected function newVariationField(int $blockNumber, int $variationNumber): array {
+    return [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['container-inline',],],
+      //Textfield itself:
+      'textfield' => [
+        '#type' => 'textfield',
+        '#required' => TRUE,
+        '#title' => 'Variation '.$blockNumber.'/'.$variationNumber,
+      ],
+      //Button for remove this textfield:
+      'rm_this_variation_btn' => [
+        '#type' => 'submit',
+        '#value' => 'Remove',
+        '#name' => 'rm_variation_BLOCK:FIELD-'.$blockNumber.':'.$variationNumber,
+        '#submit' => ['::btnRemoveThisVariation',],
+        '#ajax' => ['callback' => '::constructorBlockAjaxReturn',],
+        '#limit_validation_errors' => [],
+      ]
+    ];
+  }
+
+  protected function getMaxNumericArrayKey(array $array): int {
+    $maxKey = null;
+
+    foreach ($array as $key => $value) {
+      if (!is_numeric($key)) {continue;}
+
+      if ($maxKey === null) {
+        $maxKey = $key;
+      }
+
+      if ($key > $maxKey) {
+        $maxKey = $key;
+      }
+    }
+    unset($key, $value);
+
+    return $maxKey;
   }
 
   public function btnAddvariationHandler(array &$form, FormStateInterface $form_state) {
@@ -221,13 +260,10 @@ class SherlockMainForm extends FormBase {
 
     $btnId = (int) explode('-', $pressedBtnName)[1];
     $currentBlockKeywordVariations = $form_state->getValue(['query_constructor_block', 'KEYWORD-'.$btnId, 'VALUES']);
-    $variationNo = is_array($currentBlockKeywordVariations) ? count($currentBlockKeywordVariations) : 0;
 
-    $newfield = [
-      '#type' => 'textfield',
-      '#required' => TRUE,
-      '#title' => 'Variation '.$btnId.'/'.$variationNo,
-    ];
+    $variationNo = (is_array($currentBlockKeywordVariations) && (!empty($currentBlockKeywordVariations))) ? ($this->getMaxNumericArrayKey($currentBlockKeywordVariations) + 1) : 0;
+
+    $newfield = $this->newVariationField($btnId, $variationNo);
 
     $userAdded = $form_state->get('user_added');
     array_push($userAdded['KEYWORD-'.$btnId]['VALUES'], $newfield);
@@ -254,6 +290,28 @@ class SherlockMainForm extends FormBase {
     $form_state->set('user_added', null);
 
     //And we don't need $form_state->setRebuild(); here, because we want absolutely clean new form!
+  }
+
+  public function btnRemoveThisVariation(array &$form, FormStateInterface $form_state) {
+    $triggeringElement = $form_state->getTriggeringElement();
+    $pressedBtnName = $triggeringElement['#name'] ?? '';
+    if (!((bool) strstr($pressedBtnName, 'rm_variation_BLOCK:FIELD'))) {return;}
+
+    //Get button address in format BLOCK_NUMBER:FIELD_NUMBER
+    $buttonAddressString = explode('-', $pressedBtnName)[1];
+
+    //Explode button address to array, where [0] => BLOCK_NUMBER, [1] => FIELD_NUMBER
+    $buttonAddressArray = explode(':', $buttonAddressString);
+
+    $buttonBlockNo = (int) $buttonAddressArray[0];
+    $buttonVariationNo = (int) $buttonAddressArray[1]; //Pressed button detected! We are ready to remove corresponding field!
+
+    $user_added = $form_state->get('user_added');
+    unset($user_added['KEYWORD-'.$buttonBlockNo]['VALUES'][$buttonVariationNo]); //Field #$buttonVariationNo from block #$buttonBlockNo now DELETED.
+
+    $form_state->set('user_added', $user_added);
+
+    $form_state->setRebuild();
   }
 
   public function previewValidateHandler(array &$form, FormStateInterface $form_state) {
@@ -285,14 +343,22 @@ class SherlockMainForm extends FormBase {
     $priceFrom = ($enablePriceFilter && !empty($form_state->getValue(['additional_params', 'price_from']))) ? intval($form_state->getValue(['additional_params', 'price_from'])) : null;
     $priceTo = ($enablePriceFilter && !empty($form_state->getValue(['additional_params', 'price_to']))) ? intval($form_state->getValue(['additional_params', 'price_to'])) : null;
 
-    //Save all block values\variations to separate array. Strictly speaking, we don't need to check if key is starts with 'KEYWORD-', because all 1st level keys are 'KEYWORD-'.
-    //But left this check just for reliability.
+    //Save all block values\variations to separate array.
     $blockValues = [];
-    foreach ($form_state->getValue('query_constructor_block') as $key => $value) {
-      if (TextUtilities::startsWith($key, 'KEYWORD-')) {
-        $blockValues[] = $value['VALUES']; //Each value of $blockValues is ARRAY with combinations of one given keyword (like sony, soni).
+    $filteredValues = []; //Text field's values are "glued" together with their "Remove" buttons. We need detach "Remove" buttons, because we need only clean values.
+    $wholeConstructorBlock = $form_state->getValue('query_constructor_block');
+
+    foreach ($wholeConstructorBlock as $keyword_N_Block) {
+      foreach ($keyword_N_Block['VALUES'] as $value) {
+        $filteredValues[] = $value['textfield'];
       }
+      unset ($value);
+
+      $blockValues[] = $filteredValues; //Each value of $blockValues is ARRAY with combinations of one given keyword (like sony, soni).
+
+      $filteredValues = []; //Clean temporary storage after processing each keyword block.
     }
+    unset($keyword_N_Block);
 
     //Now let's request list of all resources and their settings.
     $resourcesList = [];
