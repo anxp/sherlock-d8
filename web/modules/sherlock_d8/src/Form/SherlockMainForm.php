@@ -13,7 +13,6 @@ use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\ReplaceCommand;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
 use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
-use Drupal\sherlock_d8\CoreClasses\TextUtilities\TextUtilities;
 
 class SherlockMainForm extends FormBase {
   public function getFormId() {
@@ -315,6 +314,7 @@ class SherlockMainForm extends FormBase {
   }
 
   public function previewValidateHandler(array &$form, FormStateInterface $form_state) {
+    //Check if at least one of the resources to search is checked (olx, besplatka, skylots...):
     $resources = $form_state->getValue('resources_chooser');
     $atLeastOneSelected = FALSE;
     foreach ($resources as $value) {
@@ -325,6 +325,19 @@ class SherlockMainForm extends FormBase {
     }
     if (!$atLeastOneSelected) {
       $form_state->setErrorByName('resources_chooser', 'Please, select at least one resource where to search.');
+    }
+
+    //Check if array of keywords is not empty, and at least one keyword present:
+    $wholeConstructorBlock = $form_state->getValue('query_constructor_block');
+    $atLeastOneKeywordPresent = FALSE;
+    foreach ($wholeConstructorBlock as $keyword_N_Block) {
+      if (array_key_exists('VALUES', $keyword_N_Block)) {
+        $atLeastOneKeywordPresent = TRUE;
+        break;
+      }
+    }
+    if (!$atLeastOneKeywordPresent) {
+      $form_state->setErrorByName('query_constructor_block', 'No keywords specified to search. Add at least one keyword or phrase.');
     }
   }
 
