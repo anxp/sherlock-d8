@@ -1,0 +1,15 @@
+<?php
+function sherlock_d8_theme($existing, $type, $theme, $path) {
+  return [
+    'display_results' => [
+      'variables' => ['output_containers' => NULL,],
+      'template' => 'sherlock-display-results', //Can't contain underscores! Template name is: sherlock-display-results.html.twig
+    ],
+
+    'display_queries' => [
+      'variables' => ['_title' => NULL, 'constructed_urls_collection' => NULL,],
+      'template' => 'sherlock-display-queries', //Can't contain underscores! Template name is: sherlock-display-queries.html.twig
+      'file' => 'sherlock_d8.theme.inc',
+    ],
+  ];
+}

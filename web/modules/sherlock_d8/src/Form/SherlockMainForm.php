@@ -165,7 +165,46 @@ class SherlockMainForm extends FormBase {
       case 2:
         $form['#title'] = $this->t('Preview and save results.');
 
-        //include 'sherlock_ui_form_step_2.php';
+        $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
+
+        //Attach JS and CSS for first block - 'List of constructed search queries':
+        $form['#attached']['library'][] = 'sherlock_d8/display_queries_lib';
+
+        //Attach JS and CSS for second block - with tabs and tables for output gathered information:
+        //$form['#attached']['library'][] = 'sherlock_d8/display_results_lib';
+
+        $outputContainers = [];
+        foreach ($form_state->getValue('resources_chooser') as $marketId) { //'olx', 'bsp', 'skl', or 0 (zero).
+          //Let's create div-container for every checked resource, because we need place where to output parse result
+          if ($marketId === 0) {continue;}
+          $outputContainers[$marketId]['market_id'] = $marketId;
+          $outputContainers[$marketId]['container_title'] = $fleamarketObjects[$marketId]::getMarketName();
+          $outputContainers[$marketId]['container_id'] = $marketId.'-output-block';
+        }
+        unset ($marketId);
+
+        //Prepare associative array with constructed search queries to show to user. Keys of array are normal (not short!) flea-market names.
+        $constructedUrlsCollection = [];
+        foreach ($_SESSION['sherlock_d8']['constructed_urls_collection'] as $key => $value) {
+          $userFriendlyKey = $fleamarketObjects[$key]::getMarketName();
+          $constructedUrlsCollection[$userFriendlyKey] = $value;
+        }
+        unset($key, $value);
+
+        $form['constructed_search_queries'] = [
+          '#theme' => 'display_queries',
+          '#_title' => $this->t('List of constructed search queries (click to show).'),
+          '#constructed_urls_collection' => $constructedUrlsCollection,
+          '#prefix' => '<div id="constructed-queries-block">',
+          '#suffix' => '</div>',
+        ];
+
+//        $form['preview_results_area'] = [
+//          '#type' => 'markup',
+//          '#markup' => theme('preview_results', ['output_containers' => $output_containers,]),
+//          '#prefix' => '<div id="preview-results-parent-block">',
+//          '#suffix' => '</div>',
+//        ];
 
         break;
 

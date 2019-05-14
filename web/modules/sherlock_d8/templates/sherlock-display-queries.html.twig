@@ -1,0 +1,18 @@
+<div class="sherlock-show-queries-parentblock">
+    <div id="sherlock_show_queries_header" class="sherlock-show-queries-header">
+        <h3>{{ _title }}</h3>
+    </div>
+    <div id="sherlock_show_queries_contentarea" class="sherlock-show-queries-contentarea">
+        <ul>
+            {% for key, value in constructed_urls_collection %}
+            <li>{{ key }}
+                <ul>
+                    {% for v in value %}
+                    <li>{{ v }}</li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>

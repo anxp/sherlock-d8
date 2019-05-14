@@ -1,0 +1,32 @@
+.sherlock-automatically-generated-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.sherlock-automatically-generated-table td, .sherlock-automatically-generated-table th {
+    text-align: left;
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.sherlock-automatically-generated-table tr:nth-child(even){background-color: #f8f8f8;}
+
+.sherlock-automatically-generated-table tr:hover {background-color: #ddd;}
+
+.sherlock-automatically-generated-table th {
+    background-color: #4CAF50;
+}
+
+.sherlock-automatically-generated-table th > h3 {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    color: white;
+    font-size: large;
+    line-height: 0.5;
+    font-weight: bold;
+}
+
+.sherlock-automatically-generated-table td, .sherlock-automatically-generated-table td > a {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    font-size: medium;
+    font-weight: normal;
+}

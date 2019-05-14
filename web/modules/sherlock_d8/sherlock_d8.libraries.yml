@@ -1,0 +1,21 @@
+display_queries_lib:
+  version: 1.x
+  js:
+    js/display-queries.js: {}
+  dependencies:
+    - core/jquery
+  css:
+    component:
+      css/display-queries.css: {}
+display_results_lib:
+  version: 1.x
+  js:
+    js/ajax_content_request.js: {}
+    dependencies:
+      - core/jquery
+      - core/drupalSettings
+      - core/drupal.ajax
+  css:
+    component:
+      css/content_output_tabs.css: {}
+      css/content_output_table.css: {}

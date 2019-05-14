@@ -1,0 +1,52 @@
+/*
+    https://habr.com/ru/post/189118/
+    https://habr.com/ru/post/189252/
+ */
+.sherlock-show-queries-parentblock {
+    border: 1px solid #ddd;
+    margin: 0 0 10px;
+    padding: 0;
+}
+
+.sherlock-show-queries-header {
+    width: auto;
+    text-align:left;
+    background-color:#4CAF50;
+    margin: 0;
+    padding: 8px;
+}
+
+.sherlock-show-queries-header > h3 {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    color: white;
+    font-size: large;
+    line-height: 0.5;
+    font-weight: bold;
+}
+
+.sherlock-show-queries-contentarea > ul {
+    list-style: none;
+}
+
+/* Styles for subtitles - OLX, Besplatka and SkyLots */
+.sherlock-show-queries-contentarea > ul > li {
+    font-size: medium;
+    font-weight: bold;
+    margin-top: 15px;
+}
+
+.sherlock-show-queries-contentarea > ul > li > ul {
+    list-style: square;
+}
+
+/* Styles for search-query URLs */
+.sherlock-show-queries-contentarea > ul > li > ul > li {
+    font-size: small;
+    font-weight: normal;
+}
+
+/* Initial style for constructed queries block -- it's hidden */
+#sherlock_show_queries_contentarea {
+    display: none;
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+}

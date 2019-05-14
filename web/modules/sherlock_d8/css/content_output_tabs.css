@@ -1,0 +1,56 @@
+.tabs {
+	min-width: 320px;
+	max-width: 800px;
+	padding: 0;
+	margin: 0 auto;
+}
+
+.tabs>section {
+	display: none;
+	padding: 15px;
+	background: #fff;
+	border: 1px solid #ddd;
+}
+.tabs>section>p {
+	margin: 0 0 5px;
+	line-height: 1.5;
+	color: #383838;
+	
+}
+
+.tabs>input {
+	display: none;
+	position: absolute;
+}
+
+.tabs>label {
+	display: inline-block;
+	margin: 0 0 -1px;
+	padding: 15px 25px;
+	font-weight: 600;
+	text-align: center;
+	color: #aaa;
+	border: 0px solid #ddd;
+	border-width: 1px 1px 1px 1px;
+	background: #f1f1f1;
+	border-radius: 3px 3px 0 0;
+}
+
+
+/* Изменения стиля переключателей вкладок при наведении */
+ 
+.tabs>label:hover {
+	color: #888;
+	cursor: pointer;
+}
+/* Стили для активной вкладки */
+.tabs>input:checked+label {
+	color: #555;
+	border-top: 2px solid #009933;
+	border-bottom: 1px solid #fff;
+	background: #fff;
+}
+/* Активация секций с помощью псевдокласса :checked */
+#olx_tab:checked~#olx-output-block, #bsp_tab:checked~#bsp-output-block, #skl_tab:checked~#skl-output-block, #tab4:checked~#content-tab4 {
+	display: block;
+}
