@@ -10,12 +10,12 @@ display_queries_lib:
 display_results_lib:
   version: 1.x
   js:
-    js/ajax_content_request.js: {}
-    dependencies:
-      - core/jquery
-      - core/drupalSettings
-      - core/drupal.ajax
+    js/ajax-content-request.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupalSettings
+    - core/drupal.ajax
   css:
     component:
-      css/content_output_tabs.css: {}
-      css/content_output_table.css: {}
+      css/content-output-tabs.css: {}
+      css/content-output-table.css: {}

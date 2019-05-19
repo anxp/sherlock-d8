@@ -171,7 +171,7 @@ class SherlockMainForm extends FormBase {
         $form['#attached']['library'][] = 'sherlock_d8/display_queries_lib';
 
         //Attach JS and CSS for second block - with tabs and tables for output gathered information:
-        //$form['#attached']['library'][] = 'sherlock_d8/display_results_lib';
+        $form['#attached']['library'][] = 'sherlock_d8/display_results_lib';
 
         $outputContainers = [];
         foreach ($form_state->getValue('resources_chooser') as $marketId) { //'olx', 'bsp', 'skl', or 0 (zero).
@@ -199,12 +199,12 @@ class SherlockMainForm extends FormBase {
           '#suffix' => '</div>',
         ];
 
-//        $form['preview_results_area'] = [
-//          '#type' => 'markup',
-//          '#markup' => theme('preview_results', ['output_containers' => $output_containers,]),
-//          '#prefix' => '<div id="preview-results-parent-block">',
-//          '#suffix' => '</div>',
-//        ];
+        $form['display_results_area'] = [
+          '#theme' => 'display_results',
+          '#output_containers' => $outputContainers,
+          '#prefix' => '<div id="display-results-parent-block">',
+          '#suffix' => '</div>',
+        ];
 
         break;
 

@@ -4,6 +4,7 @@ function sherlock_d8_theme($existing, $type, $theme, $path) {
     'display_results' => [
       'variables' => ['output_containers' => NULL,],
       'template' => 'sherlock-display-results', //Can't contain underscores! Template name is: sherlock-display-results.html.twig
+      'file' => 'sherlock_d8.theme.inc',
     ],
 
     'display_queries' => [

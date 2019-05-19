@@ -1,0 +1,21 @@
+<div class="tabs">
+  <!-- Print tabs with flea-market names -->
+  {% set is_this_first_tab = true %}
+  {% for value in output_containers %}
+    {% set current_tab_title, current_tab_id = value.container_title, value.market_id ~ "_tab" %}
+    <input id="{{ current_tab_id }}" type="radio" name="tabs" {{ is_this_first_tab ? 'checked' : '' }}>
+    <label for="{{ current_tab_id }}" title="{{ current_tab_title }}">{{ current_tab_title }}</label>
+    {% set is_this_first_tab = false %}
+  {% endfor %}
+
+  <!-- Print content sections corresponded to each tab -->
+  {% for value in output_containers %}
+    {% set container_id = 'container_id' %}
+    {% set current_content_section_id = value.container_id %}
+    <section id="{{ current_content_section_id }}">
+      <p>
+        Здесь текст
+      </p>
+    </section>
+  {% endfor %}
+</div>

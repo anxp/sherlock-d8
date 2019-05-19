@@ -9,3 +9,10 @@
  */
 function template_preprocess_display_queries(&$variables) {
 }
+
+/**
+ * Implements template_preprocess_HOOK for display_results.
+ * @param $variables
+ */
+function template_preprocess_display_results(&$variables) {
+}
