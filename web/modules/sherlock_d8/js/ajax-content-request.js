@@ -1,6 +1,23 @@
+document.addEventListener("DOMContentLoaded", function(event) {
+  let selectedResourcesOneLine = '';
+
+  for(let i = 0; i < drupalSettings.sherlock_d8.selectedMarkets.length; i++) {
+    selectedResourcesOneLine += (drupalSettings.sherlock_d8.selectedMarkets[i] + "; ");
+  }
+
+  console.log("Resources to fetch: " + selectedResourcesOneLine); //Just for debug - show which resources will be fetched.
+});
+/*
 (function($) {
 
   $(document).ready(function() {
+
+    console.log("Hello world!");
+
+    for(let i = 0; i < drupalSettings.sherlock_d8.selectedMarkets.length; i++) {
+      console.log(drupalSettings.sherlock_d8.selectedMarkets[i]);
+    }
+
     //Make ajax-request for USER SELECTED fleamarkets (then fetch every market by getMarketOffers()):
     let request_settings = {
       url: Drupal.settings.basePath + "sherlock/selected-markets",

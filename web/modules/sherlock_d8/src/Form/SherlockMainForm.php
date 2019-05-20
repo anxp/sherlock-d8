@@ -165,13 +165,20 @@ class SherlockMainForm extends FormBase {
       case 2:
         $form['#title'] = $this->t('Preview and save results.');
 
+        //==============================================================================================================
+
+        //Attach JS and CSS for second block - with tabs and tables for output gathered information:
+        $form['#attached']['library'][] = 'sherlock_d8/display_results_lib';
+
+        //Attach array with selected markets IDs to drupalSettings object, to be accessible from JS:
+        $form['#attached']['drupalSettings']['sherlock_d8']['selectedMarkets'] = $form_state->getValue(['sherlock_tmp_storage', 'selected_markets']);
+
+        //==============================================================================================================
+
         $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
 
         //Attach JS and CSS for first block - 'List of constructed search queries':
         $form['#attached']['library'][] = 'sherlock_d8/display_queries_lib';
-
-        //Attach JS and CSS for second block - with tabs and tables for output gathered information:
-        $form['#attached']['library'][] = 'sherlock_d8/display_results_lib';
 
         $outputContainers = [];
         foreach ($form_state->getValue('resources_chooser') as $marketId) { //'olx', 'bsp', 'skl', or 0 (zero).
@@ -185,7 +192,7 @@ class SherlockMainForm extends FormBase {
 
         //Prepare associative array with constructed search queries to show to user. Keys of array are normal (not short!) flea-market names.
         $constructedUrlsCollection = [];
-        foreach ($_SESSION['sherlock_d8']['constructed_urls_collection'] as $key => $value) {
+        foreach ($form_state->getValue(['sherlock_tmp_storage', 'constructed_urls_collection']) as $key => $value) {
           $userFriendlyKey = $fleamarketObjects[$key]::getMarketName();
           $constructedUrlsCollection[$userFriendlyKey] = $value;
         }
@@ -385,7 +392,7 @@ class SherlockMainForm extends FormBase {
     $pressedBtnName = $triggeringElement['#name'] ?? '';
     if ($pressedBtnName != 'btn_preview') {return;}
 
-    $_SESSION['sherlock_d8'] = []; //Clean session from previous use.
+    $sherlockTempStorage = []; //Initialize temporary storage. At the end of this function, we'll put it to $form_state.
 
     //Get flag, which indicates - search title only or body too:
     $checkDescriptionToo = $form_state->getValue(['additional_params', 'dscr_chk']) === 0 ? FALSE : TRUE;
@@ -420,6 +427,9 @@ class SherlockMainForm extends FormBase {
     //All values are splitted by nested arrays. Keys to nested arrays are names of the resources.
     $constructedUrlsCollection = [];
 
+    //Temporary storage for selected markets IDs.
+    $sherlockTempStorage['selected_markets'] = [];
+
     $keywordsCombinations = BlackMagic::generateAllPossibleCombinations($blockValues);
     $keywordsCombinationsCount = count($keywordsCombinations);
     foreach ($form_state->getValue('resources_chooser') as $key => $value) { //$key here is flea market ID, like olx, bsp, skl
@@ -431,22 +441,24 @@ class SherlockMainForm extends FormBase {
         //Check constructed URLs, and left only unique of them:
         $constructedUrlsCollection[$key] = array_unique($constructedUrlsCollection[$key]);
 
-        //Save selected (ONLY SELECTED!) fleamarkets to $_SESSION,
-        //(we'll take them by ajax from there in a moment from frontend, see $items['sherlock/selected-markets'] endpoint in sherlock.module):
-        $_SESSION['sherlock_d8']['selected_markets'][] = $key;
+        //Save selected (ONLY SELECTED!) fleamarkets to $form_state['sherlock_tmp_storage']['selected_markets'],
+        //we'll pass them to frontend by attaching to drupalSettings object at step 2 of the main form:
+        $sherlockTempStorage['selected_markets'][] = $key;
       }
     }
     unset($key, $value);
 
-    $_SESSION['sherlock_d8']['constructed_urls_collection'] = $constructedUrlsCollection;
-    $_SESSION['sherlock_d8']['price_from'] = $priceFrom;
-    $_SESSION['sherlock_d8']['price_to'] = $priceTo;
+    $sherlockTempStorage['constructed_urls_collection'] = $constructedUrlsCollection;
+    $sherlockTempStorage['price_from'] = $priceFrom;
+    $sherlockTempStorage['price_to'] = $priceTo;
+
+    $form_state->setValue('sherlock_tmp_storage', $sherlockTempStorage);
 
     //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*- LET'S THE PARTY BEGIN! *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
     //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
-    //At this point, we have enough info at $_SESSION['sherlock_d8'] to start fetch and parsing process:
-    //$_SESSION['sherlock_d8']['selected_markets'] contains just user-selected markets to fetch,
-    //$_SESSION['sherlock_d8']['constructed_urls_collection'] contains sub-arrays with collection of search queries for each market.
+    //At this point, we have enough info at $form_state['sherlock_tmp_storage'] to start fetch and parsing process:
+    //$form_state['sherlock_tmp_storage']['selected_markets'] contains just user-selected markets to fetch,
+    //$form_state['sherlock_tmp_storage']['constructed_urls_collection'] contains sub-arrays with collection of search queries for each market.
     //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
 
     $this->setNextStep($form_state, 2);
