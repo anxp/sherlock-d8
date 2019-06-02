@@ -3,105 +3,76 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
   for(let i = 0; i < drupalSettings.sherlock_d8.selectedMarkets.length; i++) {
     selectedResourcesOneLine += (drupalSettings.sherlock_d8.selectedMarkets[i] + "; ");
+    getMarketOffers(drupalSettings.sherlock_d8.selectedMarkets[i]);
   }
 
   console.log("Resources to fetch: " + selectedResourcesOneLine); //Just for debug - show which resources will be fetched.
 });
-/*
-(function($) {
 
-  $(document).ready(function() {
+function getMarketOffers(selected_market) {
+  let ajaxRequestSettings = {
+    url: drupalSettings.path.baseUrl + "sherlock/market-fetch",
+    submit: {
+      market_id: selected_market,
+    },
+  };
 
-    console.log("Hello world!");
+  let ajaxObject = new Drupal.ajax(ajaxRequestSettings);
+  ajaxObject.options.success = function(response, status, xmlhttprequest) {
+    let currentMarketOutputBlock = document.getElementById(selected_market + '-output-block');
 
-    for(let i = 0; i < drupalSettings.sherlock_d8.selectedMarkets.length; i++) {
-      console.log(drupalSettings.sherlock_d8.selectedMarkets[i]);
+    //Let's prepare array with content for the table:
+    let rowsNum = response.length;
+    let tableContent = new Array(rowsNum);
+    for (let i = 0; i < rowsNum; i++) {
+      //Create IMG tag as DOM-element:
+      let img = document.createElement('img');
+      //TODO: Adjust here to show generic icon, in case if image is not available:
+      img.src = response[i].thumbnail ? response[i].thumbnail.trim() : "https://";
+      img.width = 150;
+
+      //Create A tag as DOM-element:
+      let a = document.createElement('a');
+      //Check for link existing, if not -> just assign empty string:
+      a.href = response[i].link ? response[i].link.trim() : "https://";
+      a.target = "_blank";
+      a.appendChild(document.createTextNode(response[i].title.trim()));
+
+      //Create price-string as text node, if by some reason field does not exist -> show N/A:
+      let price = response[i].price_value ? document.createTextNode(response[i].price_value) : document.createTextNode("N/A");
+
+      //Create currency-id-string as text node, if by some reason field does not exist -> show N/A:
+      let currency = response[i].price_currency ? document.createTextNode(response[i].price_currency) : document.createTextNode("N/A");
+
+      //Create next table row:
+      tableContent[i] = [img, a, price, currency]; //Img in 1st column, link in 2nd column, price in 3rd, curreny in 4th.
     }
 
-    //Make ajax-request for USER SELECTED fleamarkets (then fetch every market by getMarketOffers()):
-    let request_settings = {
-      url: Drupal.settings.basePath + "sherlock/selected-markets",
-      submit: {},
-    };
+    //Prepare array with header labels. Label are NOT JUST TEXT! They need to be DOM objects
+    //(so, they need to be created via createElement or createTextNode or smth similar)!
+    let itemImageLabel = document.createElement("h3");
+    itemImageLabel.textContent = "Item image"; //TODO: make this label translatable
 
-    let ajax_request = new Drupal.ajax(false, false, request_settings);
-    ajax_request.options.success = function(response, status, xmlhttprequest) {
-      //console.log(typeof response);
-      for(let i = 0; i < response.length; i++){
-        //console.log(response[i]);
-        getMarketOffers(response[i]);
-      }
-    };
+    let itemNameLabel = document.createElement("h3");
+    itemNameLabel.textContent = "Item name"; //TODO: make this label translatable
 
-    ajax_request.eventResponse(ajax_request, {});
-  });
+    let itemPriceLabel = document.createElement("h3");
+    itemPriceLabel.textContent = "Price"; //TODO: make this label translatable
 
-  function getMarketOffers(selected_market) {
-    let basePath = Drupal.settings.basePath;
-    let request_settings = {
-      url: Drupal.settings.basePath + "sherlock/market-fetch",
-      submit: {
-        market_id: selected_market,
-      },
-    };
-    let ajax_request = new Drupal.ajax(false, false, request_settings);
-    ajax_request.options.success = function(response, status, xmlhttprequest) {
-      let currentMarketOutputBlock = document.getElementById(selected_market + '-output-block');
+    let itemCurrencyLabel = document.createElement("h3");
+    itemCurrencyLabel.textContent = "Curr."; //TODO: make this label translatable
 
-      //Let's prepare array with content for the table:
-      let rowsNum = response.length;
-      let tableContent = new Array(rowsNum);
-      for (let i = 0; i < rowsNum; i++) {
-        //Create IMG tag as DOM-element:
-        let img = document.createElement('img');
-        //TODO: Adjust here to show generic icon, in case if image is not available:
-        img.src = response[i].thumbnail ? response[i].thumbnail.trim() : "https://";
-        img.width = 150;
+    let headerLabels = [itemImageLabel, itemNameLabel, itemPriceLabel, itemCurrencyLabel];
 
-        //Create A tag as DOM-element:
-        let a = document.createElement('a');
-        //Check for link existing, if not -> just assign empty string:
-        a.href = response[i].link ? response[i].link.trim() : "https://";
-        a.target = "_blank";
-        a.appendChild(document.createTextNode(response[i].title.trim()));
+    //And finally, generate our table:
+    let tbl = createTable(tableContent, headerLabels, "sherlock-automatically-generated-table");
 
-        //Create price-string as text node, if by some reason field does not exist -> show N/A:
-        let price = response[i].price_value ? document.createTextNode(response[i].price_value) : document.createTextNode("N/A");
+    //Append table as child element to div-container:
+    currentMarketOutputBlock.appendChild(tbl);
+  };
 
-        //Create currency-id-string as text node, if by some reason field does not exist -> show N/A:
-        let currency = response[i].price_currency ? document.createTextNode(response[i].price_currency) : document.createTextNode("N/A");
-
-        //Create next table row:
-        tableContent[i] = [img, a, price, currency]; //Img in 1st column, link in 2nd column, price in 3rd, curreny in 4th.
-      }
-
-      //Prepare array with header labels. Label are NOT JUST TEXT! They need to be DOM objects
-      //(so, they need to be created via createElement or createTextNode or smth similar)!
-      let itemImageLabel = document.createElement("h3");
-      itemImageLabel.textContent = "Item image"; //TODO: make this label translatable
-
-      let itemNameLabel = document.createElement("h3");
-      itemNameLabel.textContent = "Item name"; //TODO: make this label translatable
-
-      let itemPriceLabel = document.createElement("h3");
-      itemPriceLabel.textContent = "Price"; //TODO: make this label translatable
-
-      let itemCurrencyLabel = document.createElement("h3");
-      itemCurrencyLabel.textContent = "Curr."; //TODO: make this label translatable
-
-      let headerLabels = [itemImageLabel, itemNameLabel, itemPriceLabel, itemCurrencyLabel];
-
-      //And finally, generate our table:
-      let tbl = createTable(tableContent, headerLabels, "sherlock-automatically-generated-table");
-
-      //Append table as child element to div-container:
-      currentMarketOutputBlock.appendChild(tbl);
-    };
-
-    ajax_request.eventResponse(ajax_request, {});
-  }
-
-})(jQuery);
+  ajaxObject.execute();
+}
 
 /**
  * This function generates simple table with header row from specified data (tableContent, headerLabels).
