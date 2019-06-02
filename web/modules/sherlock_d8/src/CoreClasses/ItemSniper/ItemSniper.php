@@ -8,9 +8,9 @@
 
 namespace Drupal\sherlock_d8\CoreClasses\ItemSniper;
 
-use phpquery\PhpQuery as phpQuery;
-use phpquery\phpQueryObject as phpQueryObject;
-use function phpQuery\pq;
+use PhpQuery\PhpQuery as phpQuery;
+use PhpQuery\PhpQueryObject as phpQueryObject;
+use function PhpQuery\pq;
 
 abstract class ItemSniper {
   //Just the most popular user agent, it can be overriden by setUserAgent() method:

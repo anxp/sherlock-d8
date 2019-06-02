@@ -8,8 +8,8 @@
 
 namespace Drupal\sherlock_d8\CoreClasses\ItemSniper;
 
-use phpquery\PhpQuery as phpQuery;
-use phpquery\phpQueryObject as phpQueryObject;
+use PhpQuery\PhpQuery as phpQuery;
+use PhpQuery\PhpQueryObject as phpQueryObject;
 
 /*
  * Naming convention for child classes:
