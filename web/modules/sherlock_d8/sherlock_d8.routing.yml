@@ -5,3 +5,11 @@ sherlock_d8.mainform:
     _form: '\Drupal\sherlock_d8\Form\SherlockMainForm'
   requirements:
     _permission: 'access content'
+
+sherlock_d8.market_fetch_controller:
+  path: 'sherlock/market-fetch'
+  defaults:
+    _controller: '\Drupal\sherlock_d8\Controller\MarketFetchController::fetchMarkets'
+    _title: 'Ajax Market Fetch'
+  requirements:
+    _permission: 'access content'

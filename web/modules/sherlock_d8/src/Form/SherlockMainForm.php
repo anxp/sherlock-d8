@@ -454,6 +454,9 @@ class SherlockMainForm extends FormBase {
 
     $form_state->setValue('sherlock_tmp_storage', $sherlockTempStorage);
 
+    //TODO: Maybe refactor this:
+    $_SESSION['sherlock_tmp_storage'] = $sherlockTempStorage; //Also, save our tmp_storage to session.
+
     //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*- LET'S THE PARTY BEGIN! *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
     //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
     //At this point, we have enough info at $form_state['sherlock_tmp_storage'] to start fetch and parsing process:
