@@ -12,6 +12,8 @@ use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Drupal\sherlock_d8\CoreClasses\ItemSniper\{ItemSniper, olx_ItemSniper, bsp_ItemSniper, skl_ItemSniper};
 use Drupal\sherlock_d8\CoreClasses\ArrayFiltration_2D\ArrayFiltration_2D;
+use Drupal\sherlock_d8\CoreClasses\FileManager\FileManager;
+use Twig\Error\RuntimeError;
 
 class MarketFetchController extends ControllerBase {
   public function fetchMarkets() {
@@ -68,6 +70,15 @@ class MarketFetchController extends ControllerBase {
     /**
      * TODO: Implement Caching.
      */
+
+    foreach ($filteredData as &$value) {
+      $pic = new FileManager('public://sherlock/img_cache');
+      $picExtUrl = $value['thumbnail'];
+      $locUrl = $pic->loadRemoteFile($picExtUrl)->saveFileManaged()->getLocalFileUrl();
+      $value['thumbnail'] = $locUrl ? $locUrl : '';
+      unset($pic);
+    }
+    unset($value);
 
     $response = new JsonResponse();
     $response->setData($filteredData);

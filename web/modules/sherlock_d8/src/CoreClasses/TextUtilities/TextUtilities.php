@@ -5,6 +5,7 @@
  * Date: 2019-05-01
  * Time: 14:10
  */
+
 namespace Drupal\sherlock_d8\CoreClasses\TextUtilities;
 
 class TextUtilities {
