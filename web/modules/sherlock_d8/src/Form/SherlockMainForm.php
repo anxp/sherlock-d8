@@ -20,6 +20,13 @@ class SherlockMainForm extends FormBase {
   }
 
   public function buildForm(array $form, FormStateInterface $form_state) {
+    //---------------- Authentication check ----------------------------------------------------------------------------
+    $userAuthenticated = false;
+    if (\Drupal::currentUser()->isAuthenticated()) {
+      $userAuthenticated = true;
+    }
+    //------------------------------------------------------------------------------------------------------------------
+
     $step = $this->getCurrentStep($form_state);
 
     $form['#tree'] = TRUE;
@@ -31,6 +38,52 @@ class SherlockMainForm extends FormBase {
       // ----- STEP 1. Here we show constructor and give user ability to make his own search queries. ------------------
       case 1:
         $form['#title'] = $this->t('What are you looking for? Create your perfect search query!');
+
+        //---------------- LOAD or DELETE saved search -----------------------------------------------------------------
+        $form['saved_search_selector_block'] = [
+          '#type' => 'details',
+          '#open' => FALSE,
+          '#title' => 'Load saved search',
+          '#prefix' => '<div class="container-inline">',
+          '#suffix' => '</div>',
+        ];
+
+        if($userAuthenticated) {
+
+          $form['saved_search_selector_block']['saved_search_selector'] = [
+            '#type' => 'select',
+            '#options' => [0 => 'First option', 1 => 'Second option', 2 => 'Third more long option than previous...',],
+            '#title' => $this->t('Select and load saved search'),
+            '#default_value' => null,
+            '#empty_option' => $this->t('Select one of...'),
+            '#empty_value' => '',
+          ];
+
+          $form['saved_search_selector_block']['btn_load'] = [
+            '#type' => 'submit',
+            '#value' => $this->t('Load'),
+            '#name' => 'btn_loadsearch',
+            '#submit' => [],
+          ];
+
+          $form['saved_search_selector_block']['btn_delete'] = [
+            '#type' => 'submit',
+            '#value' => $this->t('Delete'),
+            '#name' => 'btn_deletesearch',
+            '#submit' => [],
+          ];
+
+        } else {
+
+          $form['saved_search_selector_block']['not_auth_message'] = [
+            '#type' => 'item',
+            '#title' => 'Login for full access',
+            '#description' => 'You need to login or register to be able to load and save searches.'
+          ];
+
+        }
+
+        //--------------------------------------------------------------------------------------------------------------
 
         $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
 
@@ -165,7 +218,8 @@ class SherlockMainForm extends FormBase {
       case 2:
         $form['#title'] = $this->t('Preview and save results.');
 
-        //==============================================================================================================
+        //Attach JS and CSS for first block - 'List of constructed search queries':
+        $form['#attached']['library'][] = 'sherlock_d8/display_queries_lib';
 
         //Attach JS and CSS for second block - with tabs and tables for output gathered information:
         $form['#attached']['library'][] = 'sherlock_d8/display_results_lib';
@@ -173,12 +227,7 @@ class SherlockMainForm extends FormBase {
         //Attach array with selected markets IDs to drupalSettings object, to be accessible from JS:
         $form['#attached']['drupalSettings']['sherlock_d8']['selectedMarkets'] = $form_state->getValue(['sherlock_tmp_storage', 'selected_markets']);
 
-        //==============================================================================================================
-
         $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
-
-        //Attach JS and CSS for first block - 'List of constructed search queries':
-        $form['#attached']['library'][] = 'sherlock_d8/display_queries_lib';
 
         $outputContainers = [];
         foreach ($form_state->getValue('resources_chooser') as $marketId) { //'olx', 'bsp', 'skl', or 0 (zero).
@@ -198,6 +247,38 @@ class SherlockMainForm extends FormBase {
         }
         unset($key, $value);
 
+        //---------------- Save search for future reuse ----------------------------------------------------------------
+        $form['save_search_block'] = [
+          '#type' => 'details',
+          '#open' => FALSE,
+          '#title' => 'Save search',
+          '#prefix' => '<div class="container-inline">',
+          '#suffix' => '</div>',
+        ];
+
+        if($userAuthenticated) {
+
+          $form['save_search_block']['search_name_textfield'] = [
+            '#type' => 'textfield',
+            '#title' => $this->t('Enter name for your search'),
+          ];
+
+          $form['save_search_block']['btn_save'] = [
+            '#type' => 'submit',
+            '#value' => $this->t('Save'),
+            '#name' => 'btn_savesearch',
+            '#submit' => [],
+          ];
+
+        } else {
+          $form['save_search_block']['not_auth_message'] = [
+            '#type' => 'item',
+            '#title' => 'Login for full access',
+            '#description' => 'You need to login or register to be able to load and save searches.'
+          ];
+        }
+        //--------------------------------------------------------------------------------------------------------------
+        //---------------- List of constructed search queries block ----------------------------------------------------
         $form['constructed_search_queries'] = [
           '#theme' => 'display_queries',
           '#_title' => $this->t('List of constructed search queries (click to show).'),
@@ -205,14 +286,15 @@ class SherlockMainForm extends FormBase {
           '#prefix' => '<div id="constructed-queries-block">',
           '#suffix' => '</div>',
         ];
-
+        //--------------------------------------------------------------------------------------------------------------
+        //---------------- Results output block ------------------------------------------------------------------------
         $form['display_results_area'] = [
           '#theme' => 'display_results',
           '#output_containers' => $outputContainers,
           '#prefix' => '<div id="display-results-parent-block">',
           '#suffix' => '</div>',
         ];
-
+        //--------------------------------------------------------------------------------------------------------------
         break;
 
       default:
