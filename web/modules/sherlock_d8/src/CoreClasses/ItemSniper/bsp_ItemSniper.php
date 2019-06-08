@@ -9,6 +9,7 @@
 namespace Drupal\sherlock_d8\CoreClasses\ItemSniper;
 
 use PhpQuery\PhpQueryObject as phpQueryObject;
+use function PhpQuery\pq;
 
 /*
  * Naming convention for child classes:
@@ -16,7 +17,7 @@ use PhpQuery\PhpQueryObject as phpQueryObject;
  * This makes possible to create new instances automatically, knowing only marketId.
  * */
 class bsp_ItemSniper extends ItemSniper {
-  public function __construct($URL, $pageLimit, string $advertBlockSP = 'div.message > div.wrap', string $titleSP = 'div.content > div.title > a', string $titleLinkSP = 'div.content > div.title > a', string $priceSP = 'div.price', string $imageAddressSP = 'img.img-responsive', string $nextPageLinkSP = 'head > link.pag_params') {
+  public function __construct($URL, $pageLimit, string $advertBlockSP = 'div.messages-list > div.msg-one > div.msg-inner', string $titleSP = 'div.w-body > a.m-title', string $titleLinkSP = 'div.w-body > a.m-title', string $priceSP = 'div.w-body > p.m-price > span', string $imageAddressSP = 'a.w-image > img.img-responsive', string $nextPageLinkSP = 'head > link.pag_params') {
     parent::__construct($URL, $pageLimit, $advertBlockSP, $titleSP, $titleLinkSP, $priceSP, $imageAddressSP, $nextPageLinkSP);
   }
 
@@ -36,8 +37,19 @@ class bsp_ItemSniper extends ItemSniper {
   }
 
   protected function getItemPrice(phpQueryObject $phpQueryNode): array {
+    //Usually, we have only 1 or, more rarely, 2 nested (inside p.m-price) span tags. First contains price and currency, and second - "Buy now" text, if this option available.
+    //So, we normally want only first span tag. Unfortunately, phpQuery does not support CSS selectors like span:first-child, so we need select them all, iterate, and get only first:
+    $allNestedSpans = $phpQueryNode->find($this->priceSP);
+
+    $spanNode = pq(null);
+
+    foreach ($allNestedSpans as $justFirstSpan) {
+      $spanNode = pq($justFirstSpan); //Converted span to phpQueryObject type.
+      break;
+    }
+
     //Get price. At the moment this is 'raw' price, with number and currency ID, like 5 000,50 грн. We'll parse it later:
-    $itemPriceRaw = trim($phpQueryNode->find($this->priceSP)->text()); //price now is like 2 286,5 грн.
+    $itemPriceRaw = trim($spanNode->text()); //price now is like 2 286,5 грн.
     $itemPriceRawNoSpaces = (string) preg_replace('/\s/', '', $itemPriceRaw); //price now is like 2286,5грн. or more common: 2189грн.
 
     $itemPrice = []; //Here we will store price - price_value and price_currency.
