@@ -41,11 +41,16 @@ class bsp_ItemSniper extends ItemSniper {
     //So, we normally want only first span tag. Unfortunately, phpQuery does not support CSS selectors like span:first-child, so we need select them all, iterate, and get only first:
     $allNestedSpans = $phpQueryNode->find($this->priceSP);
 
-    $spanNode = pq(null);
+    $spanNode = null;
 
     foreach ($allNestedSpans as $justFirstSpan) {
       $spanNode = pq($justFirstSpan); //Converted span to phpQueryObject type.
       break;
+    }
+
+    //If price not found -> don't even try to parse anything:
+    if ($spanNode === null) {
+      return [];
     }
 
     //Get price. At the moment this is 'raw' price, with number and currency ID, like 5 000,50 грн. We'll parse it later:
