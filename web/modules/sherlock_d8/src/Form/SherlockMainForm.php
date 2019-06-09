@@ -261,6 +261,7 @@ class SherlockMainForm extends FormBase {
           $form['save_search_block']['search_name_textfield'] = [
             '#type' => 'textfield',
             '#title' => $this->t('Enter name for your search'),
+            '#maxlength' => 255, //This field defined as VARCHAR(255) in DB.
           ];
 
           $form['save_search_block']['btn_save'] = [

@@ -1,0 +1,77 @@
+<?php
+
+function sherlock_d8_schema() {
+  $schema['sherlock_user_input'] = [
+    'description' => 'Sherlock main table - saved user input.',
+    'fields' => [
+      'id' => [
+        'description' => 'The primary identifier for records.',
+        'type' => 'serial', //Because we want this field to be autoincremented.
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+
+      'uid' => [
+        'description' => 'User ID taken from the Drupal.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+
+      'created' => [
+        'description' => 'Time created in timestamp format.',
+        'type' => 'int',
+      ],
+
+      'changed' => [
+        'description' => 'Time last changed in timestamp format.',
+        'type' => 'int',
+      ],
+
+      'name' => [
+        'description' => 'User given name for saved search.',
+        'type' => 'varchar',
+        'length' => 255,
+      ],
+
+      'name_hash' => [
+        'description' => 'Name hash, md4 or md5 or other 32 symbols.',
+        'type' => 'char',
+        'length' => 32,
+      ],
+
+      'serialized_form' => [
+        'description' => 'Saved form state as serialized array.',
+        'type' => 'text',
+      ],
+
+      'keep_alive_days' => [
+        'description' => 'How long to store user saved search. Usually - 7/30/90/365 days.',
+        'type' => 'int',
+        'size' => 'small',
+        'unsigned' => TRUE,
+      ],
+
+      'delete' => [
+        'description' => 'Should this record be deleted? Possible values - 0/1.',
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+      ],
+    ],
+
+    'unique keys' => [
+      //This is "composite key" which helps to be sure that every user has only unique search names (and their hash):
+      'uid_namehash' => [
+        'uid',
+        'name_hash',
+      ],
+    ],
+
+    'primary key' => [
+      'id',
+    ],
+  ];
+
+  return $schema;
+}
