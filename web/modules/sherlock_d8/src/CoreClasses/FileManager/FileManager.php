@@ -160,7 +160,13 @@ class FileManager {
 
     $newFileName = $this->constructFileName($this->remoteFileUrl);
 
-    file_prepare_directory($this->destUri, FileSystemInterface::CREATE_DIRECTORY);
+    //TODO: Maybe refactor this to use dependency injection:
+    try {
+      \Drupal::service('file_system')->prepareDirectory($this->destUri, FileSystemInterface::CREATE_DIRECTORY);
+    }
+    catch (\Drupal\Core\File\Exception\FileException $e) {
+      \Drupal::logger('sherlock_d8')->error('Can\'t create directory for temporary files (public://sherlock/img_cache). Check permissions.');
+    }
 
     $newFileUri = $this->destUri.$newFileName;
 
