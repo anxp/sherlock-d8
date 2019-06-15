@@ -40,8 +40,13 @@ function sherlock_d8_schema() {
         'length' => 32,
       ],
 
-      'serialized_form' => [
-        'description' => 'Saved form state as serialized array.',
+      'serialized_form_structure' => [
+        'description' => 'Here we store not a whole form structure (because its senseless), but only user_added block.',
+        'type' => 'text',
+      ],
+
+      'serialized_form_values' => [
+        'description' => 'Here we store pre-cleaned value of form_state[values].',
         'type' => 'text',
       ],
 
