@@ -13,8 +13,31 @@ use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\ReplaceCommand;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
 use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
+use Drupal\Core\Database\Connection;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 class SherlockMainForm extends FormBase {
+  /**
+   * @var \Drupal\Core\Database\Connection $dbConnection
+   */
+  protected $dbConnection;
+
+  /**
+   * Constructs a new SherlockMainForm object.
+   * @param \Drupal\Core\Database\Connection $dbConnection
+   */
+  public function __construct(Connection $dbConnection) {
+    $this->dbConnection = $dbConnection;
+  }
+
+  public static function create(ContainerInterface $container) {
+    /**
+     * @var \Drupal\Core\Database\Connection $dbConnection
+     */
+    $dbConnection = $container->get('database');
+    return new static($dbConnection);
+  }
+
   public function getFormId() {
     return 'sherlock_main_form';
   }
@@ -22,7 +45,7 @@ class SherlockMainForm extends FormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
     //---------------- Authentication check ----------------------------------------------------------------------------
     $userAuthenticated = false;
-    if (\Drupal::currentUser()->isAuthenticated()) {
+    if ($this->currentUser()->isAuthenticated()) {
       $userAuthenticated = true;
     }
     //------------------------------------------------------------------------------------------------------------------
@@ -82,13 +105,16 @@ class SherlockMainForm extends FormBase {
           ];
 
         }
-
         //--------------------------------------------------------------------------------------------------------------
 
         $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
 
         //Print out supported flea-markets. TODO: maybe this output better to do with theme function and template file?
         $formattedList = [];
+
+        /**
+         * @var \Drupal\sherlock_d8\CoreClasses\MarketReference\iMarketReference $object
+         */
 
         foreach ($fleamarketObjects as $object) {
           $currentMarketId = $object::getMarketId();
@@ -171,7 +197,6 @@ class SherlockMainForm extends FormBase {
           '#prefix' => '<div class="container-inline">',
           '#suffix' => '</div>',
         ];
-
         //--------------------------------------------------------------------------------------------------------------
 
         //Create a DIV wrapper for button(s) - according to Drupal 7 best practices recommendations:
@@ -225,7 +250,7 @@ class SherlockMainForm extends FormBase {
         $form['#attached']['library'][] = 'sherlock_d8/display_results_lib';
 
         //Attach array with selected markets IDs to drupalSettings object, to be accessible from JS:
-        $form['#attached']['drupalSettings']['sherlock_d8']['selectedMarkets'] = $form_state->getValue(['sherlock_tmp_storage', 'selected_markets']);
+        $form['#attached']['drupalSettings']['sherlock_d8']['selectedMarkets'] = $form_state->get(['sherlock_tmp_storage', 'selected_markets']);
 
         $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
 
@@ -241,7 +266,7 @@ class SherlockMainForm extends FormBase {
 
         //Prepare associative array with constructed search queries to show to user. Keys of array are normal (not short!) flea-market names.
         $constructedUrlsCollection = [];
-        foreach ($form_state->getValue(['sherlock_tmp_storage', 'constructed_urls_collection']) as $key => $value) {
+        foreach ($form_state->get(['sherlock_tmp_storage', 'constructed_urls_collection']) as $key => $value) {
           $userFriendlyKey = $fleamarketObjects[$key]::getMarketName();
           $constructedUrlsCollection[$userFriendlyKey] = $value;
         }
@@ -252,23 +277,45 @@ class SherlockMainForm extends FormBase {
           '#type' => 'details',
           '#open' => FALSE,
           '#title' => 'Save search',
-          '#prefix' => '<div class="container-inline">',
-          '#suffix' => '</div>',
         ];
 
         if($userAuthenticated) {
 
-          $form['save_search_block']['search_name_textfield'] = [
+          $form['save_search_block']['first_inline_container'] = [
+            '#type' => 'container',
+            '#prefix' => '<div class="container-inline">',
+            '#suffix' => '</div>',
+          ];
+
+          $form['save_search_block']['first_inline_container']['search_name_textfield'] = [
             '#type' => 'textfield',
             '#title' => $this->t('Enter name for your search'),
             '#maxlength' => 255, //This field defined as VARCHAR(255) in DB.
           ];
 
-          $form['save_search_block']['btn_save'] = [
+          $form['save_search_block']['second_inline_container'] = [
+            '#type' => 'container',
+            '#prefix' => '<div class="container-inline">',
+            '#suffix' => '</div>',
+          ];
+
+          $form['save_search_block']['second_inline_container']['storing_period_selector'] = [
+            '#type' => 'select',
+            '#options' => [1 => '1 day', 7 => '7 days', 30 => '30 days', 90 => '90 days', 365 => '365 days'],
+            '#title' => $this->t('How long to store and maintain your saved search?'),
+            '#default_value' => 7,
+          ];
+
+          $form['save_search_block']['second_inline_container']['btn_save'] = [
             '#type' => 'submit',
             '#value' => $this->t('Save'),
             '#name' => 'btn_savesearch',
-            '#submit' => [],
+            '#validate' => [
+              '::savesearchValidateHandler'
+            ],
+            '#submit' => [
+              '::savesearchSubmitHandler',
+            ],
           ];
 
         } else {
@@ -535,10 +582,13 @@ class SherlockMainForm extends FormBase {
     $sherlockTempStorage['price_from'] = $priceFrom;
     $sherlockTempStorage['price_to'] = $priceTo;
 
-    $form_state->setValue('sherlock_tmp_storage', $sherlockTempStorage);
+    $form_state->set('sherlock_tmp_storage', $sherlockTempStorage);
 
     //TODO: Maybe refactor this:
     $_SESSION['sherlock_tmp_storage'] = $sherlockTempStorage; //Also, save our tmp_storage to session.
+
+    //Save all submitted form state values, to pass them to 2nd step and get access there (for serialize and save to DB):
+    $form_state->set('form_state_values_snapshot', $form_state->cleanValues()->getValues());
 
     //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*- LET'S THE PARTY BEGIN! *-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
     //*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-
@@ -549,6 +599,57 @@ class SherlockMainForm extends FormBase {
 
     $this->setNextStep($form_state, 2);
     $form_state->setRebuild();
+  }
+
+  public function savesearchValidateHandler(array &$form, FormStateInterface $form_state) {
+    $searchName = $form_state->getValue(['save_search_block', 'first_inline_container', 'search_name_textfield']);
+    $searchNameSanitized = filter_var($searchName, FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES);
+
+    $storingPeriod = $form_state->getValue(['save_search_block', 'second_inline_container', 'storing_period_selector']);
+    $storingPeriodSanitized = intval($storingPeriod);
+
+    if ($searchName !== $searchNameSanitized) {
+      $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', 'Please, provide correct name for your search.');
+    }
+
+    if ($storingPeriodSanitized == 0 || $storingPeriodSanitized > 365) {
+      $form_state->setErrorByName('save_search_block][second_inline_container][storing_period_selector', 'Select how many days your search will be keeped.');
+    }
+  }
+
+  public function savesearchSubmitHandler(array &$form, FormStateInterface $form_state) {
+    $triggeringElement = $form_state->getTriggeringElement();
+    $pressedBtnName = $triggeringElement['#name'] ?? '';
+    if ($pressedBtnName != 'btn_savesearch') {return;}
+
+    //Get structure of user-configured block with keywords (this is only structure, values we'll get in next step...):
+    $userAdded = $form_state->get('user_added');
+
+    //Get values (not only of user-configured block with keywords but of whole form):
+    $formStateValuesSnapshot = $form_state->get(['form_state_values_snapshot']);
+
+    //Get user-given name for search:
+    $searchName = $form_state->getValue(['save_search_block', 'first_inline_container', 'search_name_textfield']);
+
+    //Calculate md5 hash of name of the search:
+    $searchNameMD5Hash = hash('md5', $searchName);
+
+    //Get storage time:
+    $storingPeriod = $form_state->getValue(['save_search_block', 'second_inline_container', 'storing_period_selector']);
+
+    $addNewRecordResult = $this->dbConnection->insert('sherlock_user_input')
+      ->fields([
+        'uid' => $this->currentUser()->id(),
+        'created' => time(),
+        'changed' => time(),
+        'name' => $searchName,
+        'name_hash' => $searchNameMD5Hash,
+        'serialized_form_structure' => serialize($userAdded),
+        'serialized_form_values' => serialize($formStateValuesSnapshot),
+        'keep_alive_days' => $storingPeriod,
+        'delete' => 0,
+      ])
+      ->execute();
   }
 
   public function constructorBlockAjaxReturn(array &$form, FormStateInterface $form_state) {
