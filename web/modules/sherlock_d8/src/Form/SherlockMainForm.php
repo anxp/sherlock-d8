@@ -13,28 +13,28 @@ use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\ReplaceCommand;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
 use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
-use Drupal\Core\Database\Connection;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 
 class SherlockMainForm extends FormBase {
   /**
-   * @var \Drupal\Core\Database\Connection $dbConnection
+   * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
    */
   protected $dbConnection;
 
   /**
    * Constructs a new SherlockMainForm object.
-   * @param \Drupal\Core\Database\Connection $dbConnection
+   * @param \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
    */
-  public function __construct(Connection $dbConnection) {
+  public function __construct(DatabaseManager $dbConnection) {
     $this->dbConnection = $dbConnection;
   }
 
   public static function create(ContainerInterface $container) {
     /**
-     * @var \Drupal\Core\Database\Connection $dbConnection
+     * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
      */
-    $dbConnection = $container->get('database');
+    $dbConnection = $container->get('sherlock_d8.database_manager');
     return new static($dbConnection);
   }
 
@@ -612,7 +612,7 @@ class SherlockMainForm extends FormBase {
       $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', 'Please, provide correct name for your search.');
     }
 
-    if ($storingPeriodSanitized == 0 || $storingPeriodSanitized > 365) {
+    if ($storingPeriodSanitized > 365) {
       $form_state->setErrorByName('save_search_block][second_inline_container][storing_period_selector', 'Select how many days your search will be keeped.');
     }
   }
@@ -637,19 +637,21 @@ class SherlockMainForm extends FormBase {
     //Get storage time:
     $storingPeriod = $form_state->getValue(['save_search_block', 'second_inline_container', 'storing_period_selector']);
 
-    $addNewRecordResult = $this->dbConnection->insert('sherlock_user_input')
-      ->fields([
-        'uid' => $this->currentUser()->id(),
-        'created' => time(),
-        'changed' => time(),
-        'name' => $searchName,
-        'name_hash' => $searchNameMD5Hash,
-        'serialized_form_structure' => serialize($userAdded),
-        'serialized_form_values' => serialize($formStateValuesSnapshot),
-        'keep_alive_days' => $storingPeriod,
-        'delete' => 0,
-      ])
-      ->execute();
+    $dataToInsert = [
+      'uid' => $this->currentUser()->id(),
+      'created' => time(),
+      'changed' => time(),
+      'name' => $searchName,
+      'name_hash' => $searchNameMD5Hash,
+      'serialized_form_structure' => serialize($userAdded),
+      'serialized_form_values' => serialize($formStateValuesSnapshot),
+      'keep_alive_days' => $storingPeriod,
+      'delete' => 0,
+    ];
+
+    //$dbc = \Drupal::service('sherlock_d8.database_manager');
+
+    $this->dbConnection->setData($dataToInsert)->selectTable('sherlock_user_input')->insertRecord();
   }
 
   public function constructorBlockAjaxReturn(array &$form, FormStateInterface $form_state) {

@@ -1,0 +1,4 @@
+services:
+  sherlock_d8.database_manager:
+    class: Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager
+    arguments: ['@database']
