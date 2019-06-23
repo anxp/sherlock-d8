@@ -9,10 +9,8 @@
 namespace Drupal\sherlock_d8\CoreClasses\DatabaseManager;
 
 use Drupal\Core\Database\Connection;
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\Core\DependencyInjection\ContainerInjectionInterface;
 
-class DatabaseManager implements ContainerInjectionInterface {
+class DatabaseManager {
   protected $mappedData = null;
   protected $selectedTable = null;
 
@@ -27,19 +25,6 @@ class DatabaseManager implements ContainerInjectionInterface {
    */
   public function __construct(Connection $dbConnection) {
     $this->dbConnection = $dbConnection;
-  }
-
-  /**
-   * Implementation of static method create() required to properly implement ContainerInjectionInterface
-   * @param ContainerInterface $container
-   * @return DatabaseManager
-   */
-  public static function create(ContainerInterface $container) {
-    /**
-     * @var \Drupal\Core\Database\Connection $dbConnection
-     */
-    $dbConnection = $container->get('database');
-    return new static($dbConnection);
   }
 
   public function setData($mappedData) {
