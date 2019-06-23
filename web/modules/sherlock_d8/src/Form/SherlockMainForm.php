@@ -608,12 +608,38 @@ class SherlockMainForm extends FormBase {
     $storingPeriod = $form_state->getValue(['save_search_block', 'second_inline_container', 'storing_period_selector']);
     $storingPeriodSanitized = intval($storingPeriod);
 
+    //Calculate md5 hash of name of the search:
+    $searchNameMD5Hash = hash('md5', $searchName);
+
+    $dataToCheck = [
+      'uid' => $this->currentUser()->id(),
+      'name_hash' => $searchNameMD5Hash,
+    ];
+
     if ($searchName !== $searchNameSanitized) {
       $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', 'Please, provide correct name for your search.');
     }
 
     if ($storingPeriodSanitized > 365) {
       $form_state->setErrorByName('save_search_block][second_inline_container][storing_period_selector', 'Select how many days your search will be keeped.');
+    }
+
+    //Check if data with given user ID and name already exists:
+    if ($this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($dataToCheck)) {
+      $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', 'This name is already taken, we can\'t save new search with the same name. But you can overwrite existing search with new data.');
+
+      //Add new form element - button with overwrite function:
+      $form['save_search_block']['second_inline_container']['btn_overwrite'] = [
+        '#type' => 'submit',
+        '#value' => $this->t('Overwrite existing'),
+        '#name' => 'btn_overwriteexisting',
+        '#validate' => [
+          '::overwriteexistingValidateHandler'
+        ],
+        '#submit' => [
+          '::overwriteexistingSubmitHandler',
+        ],
+      ];
     }
   }
 
@@ -649,9 +675,15 @@ class SherlockMainForm extends FormBase {
       'delete' => 0,
     ];
 
-    //$dbc = \Drupal::service('sherlock_d8.database_manager');
-
     $this->dbConnection->setData($dataToInsert)->selectTable('sherlock_user_input')->insertRecord();
+  }
+
+  public function overwriteexistingValidateHandler() {
+
+  }
+
+  public function overwriteexistingSubmitHandler() {
+
   }
 
   public function constructorBlockAjaxReturn(array &$form, FormStateInterface $form_state) {

@@ -38,10 +38,36 @@ class DatabaseManager {
   }
 
   public function insertRecord() {
+    //TODO: Wrap in try-catch
     $this->dbConnection->insert($this->selectedTable)->fields($this->mappedData)->execute();
   }
 
-  public function checkIfRecordExists() {
+  /**
+   * This method intended to check if record already exists in specified table.
+   * Specified table need to be set by selectTable method.
+   * Input parameter is associative array, where keys are names of table fields, and values are corresponding values,
+   * example of input data array: ['uid' => 1, 'title' => 'Hello world!', 'is_published' => 1]
+   * @param $mappedData array
+   * @return bool
+   */
+  public function checkIfRecordExists(array $mappedData): bool {
+    $query = $this->dbConnection->select($this->selectedTable); //This is equivalent of FROM table_name
+
+    //Here we'll add as many '=' conditions as number of values in $mappedData array.
+    foreach ($mappedData as $fieldName => $fieldValue) {
+      $query->condition($this->selectedTable.'.'.$fieldName, $fieldValue, '=');
+    }
+    unset ($fieldName, $fieldValue);
+
+    $query->fields($this->selectedTable); //This is equivalent of SELECT * to select all fields from table.
+
+    $numberOfRows = $query->countQuery()->execute()->fetchField(); //This is equivalent of COUNT aggregation function.
+
+    if ($numberOfRows > 0) {
+      return TRUE;
+    } else {
+      return FALSE;
+    }
   }
 }
 
