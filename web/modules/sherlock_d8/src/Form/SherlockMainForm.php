@@ -321,7 +321,12 @@ class SherlockMainForm extends FormBase {
             '#default_value' => 7,
           ];
 
-          $form['save_search_block']['second_inline_container']['btn_save'] = [
+          $form['save_search_block']['buttons_block'] = [
+            '#type' => 'actions',
+          ];
+
+          //Button for SAVE NEW RECORD operation:
+          $form['save_search_block']['buttons_block']['btn_save'] = [
             '#type' => 'submit',
             '#value' => $this->t('Save'),
             '#name' => 'btn_savesearch',
@@ -330,6 +335,19 @@ class SherlockMainForm extends FormBase {
             ],
             '#submit' => [
               '::savesearchSubmitHandler',
+            ],
+          ];
+
+          //Button for OVERWRITE EXISTING RECORD operation:
+          $form['save_search_block']['buttons_block']['btn_overwrite'] = [
+            '#type' => 'submit',
+            '#value' => $this->t('Save and overwrite if exists'),
+            '#name' => 'btn_overwriteexisting',
+            '#validate' => [
+              '::overwriteexistingValidateHandler'
+            ],
+            '#submit' => [
+              '::overwriteexistingSubmitHandler',
             ],
           ];
 
@@ -642,19 +660,6 @@ class SherlockMainForm extends FormBase {
     //Check if data with given user ID and name already exists:
     if ($this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($dataToCheck)) {
       $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', 'This name is already taken, we can\'t save new search with the same name. But you can overwrite existing search with new data.');
-
-      //Add new form element - button with overwrite function:
-      $form['save_search_block']['second_inline_container']['btn_overwrite'] = [
-        '#type' => 'submit',
-        '#value' => $this->t('Overwrite existing'),
-        '#name' => 'btn_overwriteexisting',
-        '#validate' => [
-          '::overwriteexistingValidateHandler'
-        ],
-        '#submit' => [
-          '::overwriteexistingSubmitHandler',
-        ],
-      ];
     }
   }
 
@@ -692,18 +697,84 @@ class SherlockMainForm extends FormBase {
     ];
 
     if ($this->dbConnection->setData($dataToInsert)->selectTable('sherlock_user_input')->insertRecord()) {
-      $this->messenger->addStatus('Search settings successfully saved.');
+      $this->messenger->addStatus('Search settings and parameters successfully saved.');
     } else {
       $this->messenger->addError('An unexpected error occurred on saving.');
     }
   }
 
-  public function overwriteexistingValidateHandler() {
+  public function overwriteexistingValidateHandler(array &$form, FormStateInterface $form_state) {
+    $searchName = $form_state->getValue(['save_search_block', 'first_inline_container', 'search_name_textfield']);
+    $searchNameSanitized = filter_var($searchName, FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES);
 
+    $storingPeriod = $form_state->getValue(['save_search_block', 'second_inline_container', 'storing_period_selector']);
+    $storingPeriodSanitized = intval($storingPeriod);
+
+    //Calculate md5 hash of name of the search:
+    $searchNameMD5Hash = hash('md5', $searchName);
+
+    $dataToCheck = [
+      'uid' => $this->currentUser()->id(),
+      'name_hash' => $searchNameMD5Hash,
+    ];
+
+    if ($searchName !== $searchNameSanitized) {
+      $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', 'Please, provide correct name for your search.');
+    }
+
+    if ($storingPeriodSanitized > 365) {
+      $form_state->setErrorByName('save_search_block][second_inline_container][storing_period_selector', 'Select how many days your search will be keeped.');
+    }
+
+    //Check if record we going to UPDATE is EXISTS:
+    if (!$this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($dataToCheck)) {
+      $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', 'A record with the specified name does not exist. Use "Save" button to save new record.');
+    }
   }
 
-  public function overwriteexistingSubmitHandler() {
+  public function overwriteexistingSubmitHandler(array &$form, FormStateInterface $form_state) {
+    $triggeringElement = $form_state->getTriggeringElement();
+    $pressedBtnName = $triggeringElement['#name'] ?? '';
+    if ($pressedBtnName != 'btn_overwriteexisting') {return;}
 
+    //Get structure of user-configured block with keywords (this is only structure, values we'll get in next step...):
+    $userAdded = $form_state->get('user_added');
+
+    //Get values (not only of user-configured block with keywords but of whole form):
+    $formStateValuesSnapshot = $form_state->get(['form_state_values_snapshot']);
+
+    //Get user-given name for search:
+    $searchName = $form_state->getValue(['save_search_block', 'first_inline_container', 'search_name_textfield']);
+
+    //Calculate md5 hash of name of the search:
+    $searchNameMD5Hash = hash('md5', $searchName);
+
+    //Get storage time:
+    $storingPeriod = $form_state->getValue(['save_search_block', 'second_inline_container', 'storing_period_selector']);
+    $storingPeriodSanitized = intval($storingPeriod);
+
+    $dataToUpdateExistingRecord = [
+      //'uid' => $this->currentUser()->id(),
+      //'created' => time(),
+      'changed' => time(),
+      //'name' => $searchName,
+      //'name_hash' => $searchNameMD5Hash,
+      'serialized_form_structure' => serialize($userAdded),
+      'serialized_form_values' => serialize($formStateValuesSnapshot),
+      'keep_alive_days' => $storingPeriodSanitized,
+      'delete' => 0,
+    ];
+
+    $whereClause = [
+      'uid' => $this->currentUser()->id(),
+      'name_hash' => $searchNameMD5Hash,
+    ];
+
+    if ($this->dbConnection->setData($dataToUpdateExistingRecord)->selectTable('sherlock_user_input')->updateRecord($whereClause)) {
+      $this->messenger->addStatus('Existing search successfully updated.');
+    } else {
+      $this->messenger->addError('No records was updated, nothing to change.');
+    }
   }
 
   public function constructorBlockAjaxReturn(array &$form, FormStateInterface $form_state) {

@@ -44,6 +44,26 @@ class DatabaseManager {
     return TRUE;
   }
 
+  public function updateRecord($assocWhereClause) {
+    $query = $this->dbConnection->update($this->selectedTable); //This is equivalent of FROM table_name
+
+    //Here we'll add as many '=' conditions as number of values in $assocWhereClause array.
+    foreach ($assocWhereClause as $fieldName => $fieldValue) {
+      $query->condition($this->selectedTable.'.'.$fieldName, $fieldValue, '=');
+    }
+    unset ($fieldName, $fieldValue);
+
+    $query->fields($this->mappedData); //This is equivalent of SET field_name=field_value
+
+    $numberOfRows = $query->execute();
+
+    if ($numberOfRows > 0) {
+      return TRUE;
+    } else {
+      return FALSE;
+    }
+  }
+
   /**
    * This method intended to check if record already exists in specified table.
    * Specified table need to be set by selectTable method.
