@@ -11,9 +11,10 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\ReplaceCommand;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
 use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 
 class SherlockMainForm extends FormBase {
@@ -23,11 +24,19 @@ class SherlockMainForm extends FormBase {
   protected $dbConnection;
 
   /**
+   * The messenger.
+   *
+   * @var \Drupal\Core\Messenger\MessengerInterface $messenger
+   */
+  protected $messenger;
+
+  /**
    * Constructs a new SherlockMainForm object.
    * @param \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
    */
-  public function __construct(DatabaseManager $dbConnection) {
+  public function __construct(DatabaseManager $dbConnection, MessengerInterface $messenger) {
     $this->dbConnection = $dbConnection;
+    $this->messenger = $messenger;
   }
 
   public static function create(ContainerInterface $container) {
@@ -35,7 +44,13 @@ class SherlockMainForm extends FormBase {
      * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
      */
     $dbConnection = $container->get('sherlock_d8.database_manager');
-    return new static($dbConnection);
+
+    /**
+     * @var \Drupal\Core\Messenger\MessengerInterface $messenger
+     */
+    $messenger = $container->get('messenger');
+
+    return new static($dbConnection, $messenger);
   }
 
   public function getFormId() {
@@ -205,7 +220,7 @@ class SherlockMainForm extends FormBase {
         //...and three main controls buttons () in this wrapper:
         $form['first_step_buttons_wrapper']['btn_addterm'] = [
           '#type' => 'submit',
-          '#value' => 'Add Term',
+          '#value' => 'Add Keyword',
           '#name' => 'btn_addterm',
           '#submit' => [
             '::addTermHandler',
@@ -368,7 +383,7 @@ class SherlockMainForm extends FormBase {
       '#type' => 'actions',
       'btn_addvariation-'.$newBlockNo => [ //...and new button inside this wrapper
         '#type' => 'submit',
-        '#value' => 'Add Variation',
+        '#value' => 'Add Word Spelling Variant',
         '#name' => 'btn_addvariation-'.$newBlockNo,
         '#submit' => ['::btnAddvariationHandler',],
         '#ajax' => ['callback' => '::constructorBlockAjaxReturn',],
@@ -676,7 +691,11 @@ class SherlockMainForm extends FormBase {
       'delete' => 0,
     ];
 
-    $this->dbConnection->setData($dataToInsert)->selectTable('sherlock_user_input')->insertRecord();
+    if ($this->dbConnection->setData($dataToInsert)->selectTable('sherlock_user_input')->insertRecord()) {
+      $this->messenger->addStatus('Search settings successfully saved.');
+    } else {
+      $this->messenger->addError('An unexpected error occurred on saving.');
+    }
   }
 
   public function overwriteexistingValidateHandler() {

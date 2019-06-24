@@ -40,6 +40,8 @@ class DatabaseManager {
   public function insertRecord() {
     //TODO: Wrap in try-catch
     $this->dbConnection->insert($this->selectedTable)->fields($this->mappedData)->execute();
+    //TODO: Rewrite this function to return TRUE or FALSE depending on was save successful or not.
+    return TRUE;
   }
 
   /**
