@@ -662,6 +662,7 @@ class SherlockMainForm extends FormBase {
 
     //Get storage time:
     $storingPeriod = $form_state->getValue(['save_search_block', 'second_inline_container', 'storing_period_selector']);
+    $storingPeriodSanitized = intval($storingPeriod);
 
     $dataToInsert = [
       'uid' => $this->currentUser()->id(),
@@ -671,7 +672,7 @@ class SherlockMainForm extends FormBase {
       'name_hash' => $searchNameMD5Hash,
       'serialized_form_structure' => serialize($userAdded),
       'serialized_form_values' => serialize($formStateValuesSnapshot),
-      'keep_alive_days' => $storingPeriod,
+      'keep_alive_days' => $storingPeriodSanitized,
       'delete' => 0,
     ];
 
