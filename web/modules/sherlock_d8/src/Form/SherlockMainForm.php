@@ -710,7 +710,7 @@ class SherlockMainForm extends FormBase {
     ];
 
     if ($this->dbConnection->setData($dataToInsert)->selectTable('sherlock_user_input')->insertRecord()) {
-      $this->messenger->addStatus('Search settings and parameters successfully saved.');
+      $this->messenger->addStatus('Search settings and parameters were successfully saved.');
     } else {
       $this->messenger->addError('An unexpected error occurred on saving.');
     }
@@ -757,7 +757,7 @@ class SherlockMainForm extends FormBase {
     if ($this->dbConnection->setData($dataToUpdateExistingRecord)->selectTable('sherlock_user_input')->updateRecord($whereClause)) {
       $this->messenger->addStatus('Existing search successfully updated.');
     } else {
-      $this->messenger->addError('No records was updated, nothing to change.');
+      $this->messenger->addError('No records were updated, nothing to change.');
     }
   }
 
