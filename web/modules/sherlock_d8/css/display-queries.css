@@ -2,28 +2,6 @@
     https://habr.com/ru/post/189118/
     https://habr.com/ru/post/189252/
  */
-.sherlock-show-queries-parentblock {
-    border: 1px solid #ddd;
-    margin: 0 0 10px;
-    padding: 0;
-}
-
-.sherlock-show-queries-header {
-    width: auto;
-    text-align:left;
-    background-color:#4CAF50;
-    margin: 0;
-    padding: 8px;
-}
-
-.sherlock-show-queries-header > h3 {
-    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
-    color: white;
-    font-size: large;
-    line-height: 0.5;
-    font-weight: bold;
-}
-
 .sherlock-show-queries-contentarea > ul {
     list-style: none;
 }
@@ -45,8 +23,8 @@
     font-weight: normal;
 }
 
-/* Initial style for constructed queries block -- it's hidden */
+/* Initial style for constructed queries block */
 #sherlock_show_queries_contentarea {
-    display: none;
+    display: block;
     font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
 }

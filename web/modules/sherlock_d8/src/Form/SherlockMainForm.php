@@ -258,7 +258,7 @@ class SherlockMainForm extends FormBase {
       case 2:
         $form['#title'] = $this->t('Preview and save results.');
 
-        //Attach JS and CSS for first block - 'List of constructed search queries':
+        //Attach CSS for first block - 'List of constructed search queries':
         $form['#attached']['library'][] = 'sherlock_d8/display_queries_lib';
 
         //Attach JS and CSS for second block - with tabs and tables for output gathered information:
@@ -362,11 +362,11 @@ class SherlockMainForm extends FormBase {
         //--------------------------------------------------------------------------------------------------------------
         //---------------- List of constructed search queries block ----------------------------------------------------
         $form['constructed_search_queries'] = [
+          '#type' => 'details',
+          '#open' => FALSE,
+          '#title' => $this->t('List of constructed search queries.'),
           '#theme' => 'display_queries',
-          '#_title' => $this->t('List of constructed search queries (click to show).'),
           '#constructed_urls_collection' => $constructedUrlsCollection,
-          '#prefix' => '<div id="constructed-queries-block">',
-          '#suffix' => '</div>',
         ];
         //--------------------------------------------------------------------------------------------------------------
         //---------------- Results output block ------------------------------------------------------------------------

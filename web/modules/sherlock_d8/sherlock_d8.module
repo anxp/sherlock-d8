@@ -8,7 +8,7 @@ function sherlock_d8_theme($existing, $type, $theme, $path) {
     ],
 
     'display_queries' => [
-      'variables' => ['_title' => NULL, 'constructed_urls_collection' => NULL,],
+      'variables' => ['constructed_urls_collection' => NULL,],
       'template' => 'sherlock-display-queries', //Can't contain underscores! Template name is: sherlock-display-queries.html.twig
       'file' => 'sherlock_d8.theme.inc',
     ],

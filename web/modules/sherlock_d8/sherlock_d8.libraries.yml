@@ -1,9 +1,5 @@
 display_queries_lib:
   version: 1.x
-  js:
-    js/display-queries.js: {}
-  dependencies:
-    - core/jquery
   css:
     component:
       css/display-queries.css: {}
