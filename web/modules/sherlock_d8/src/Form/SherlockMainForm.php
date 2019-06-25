@@ -115,8 +115,8 @@ class SherlockMainForm extends FormBase {
 
           $form['saved_search_selector_block']['not_auth_message'] = [
             '#type' => 'item',
-            '#title' => 'Login for full access',
-            '#description' => 'You need to login or register to be able to load and save searches.'
+            '#title' => $this->t('Login for full access'),
+            '#description' => $this->t('You need to login or register to be able to load and save searches.'),
           ];
 
         }
@@ -252,6 +252,29 @@ class SherlockMainForm extends FormBase {
           ],
         ];
 
+        //TODO: Make a method from this. And check if $formStateValuesSnapshot is not empty before iterate it:
+        //----------Prepopulate QUERY CONSTRUCTOR with saved values, if there are ones:---------------------------------
+        $formStateValuesSnapshot = $form_state->get(['form_state_values_snapshot']);
+
+        foreach ($formStateValuesSnapshot as $logicBlockKey => $logicBlockValues) {
+          //Check if $logicBlockValue contains something - we just want to skip a buttons or empty wrappers:
+          if (empty($logicBlockValues) || !is_array($logicBlockValues)) {continue;}
+
+          foreach ($logicBlockValues as $itemKey => $itemValue) {
+            if (is_array($itemValue)) {
+              for ($i = 0; $i < count($itemValue['VALUES']); $i++) {
+                $form[$logicBlockKey][$itemKey]['VALUES'][$i]['textfield']['#default_value'] = $itemValue['VALUES'][$i]['textfield'];
+              }
+            } else {
+              $form[$logicBlockKey][$itemKey]['#default_value'] = $itemValue;
+            }
+          }
+          unset($itemKey, $itemValue);
+        }
+        unset($logicBlockKey, $logicBlockValues);
+
+        //--------------------------------------------------------------------------------------------------------------
+
         break;
 
       // ----- STEP 2. Here we show results and give user ability to save his search for future use. -------------------
@@ -287,11 +310,42 @@ class SherlockMainForm extends FormBase {
         }
         unset($key, $value);
 
+        //---------------- Back button ---------------------------------------------------------------------------------
+        $form['navigation'] = [
+          '#type' => 'container',
+          '#attributes' => [
+            'class' => [
+              'container-inline',
+            ],
+          ],
+        ];
+
+        $form['navigation']['btn_get_first_step'] = [
+          '#type' => 'submit',
+          '#value' => $this->t('Back to constructor'),
+          '#name' => 'btn_get_first_step',
+          '#limit_validation_errors' => [],
+          '#validate' => [],
+          '#submit' => [
+            '::getFirstStepSubmit'
+          ],
+        ];
+
+        $form['navigation']['btn_reset_and_get_first_step'] = [
+          '#type' => 'submit',
+          '#value' => $this->t('Reset and back to constructor'),
+          '#name' => 'btn_reset_and_get_first_step',
+          '#limit_validation_errors' => [],
+          '#validate' => [],
+          '#submit' => [
+            '::getFirstStepSubmit'
+          ],
+        ];
         //---------------- Save search for future reuse ----------------------------------------------------------------
         $form['save_search_block'] = [
           '#type' => 'details',
           '#open' => FALSE,
-          '#title' => 'Save search',
+          '#title' => $this->t('Save search'),
         ];
 
         if($userAuthenticated) {
@@ -355,8 +409,8 @@ class SherlockMainForm extends FormBase {
         } else {
           $form['save_search_block']['not_auth_message'] = [
             '#type' => 'item',
-            '#title' => 'Login for full access',
-            '#description' => 'You need to login or register to be able to load and save searches.'
+            '#title' => $this->t('Login for full access'),
+            '#description' => $this->t('You need to login or register to be able to load and save searches.'),
           ];
         }
         //--------------------------------------------------------------------------------------------------------------
@@ -364,7 +418,7 @@ class SherlockMainForm extends FormBase {
         $form['constructed_search_queries'] = [
           '#type' => 'details',
           '#open' => FALSE,
-          '#title' => $this->t('List of constructed search queries.'),
+          '#title' => $this->t('List of constructed search queries'),
           '#theme' => 'display_queries',
           '#constructed_urls_collection' => $constructedUrlsCollection,
         ];
@@ -633,6 +687,22 @@ class SherlockMainForm extends FormBase {
 
     $this->setNextStep($form_state, 2);
     $form_state->setRebuild();
+  }
+
+  public function getFirstStepSubmit(array &$form, FormStateInterface $form_state) {
+    $triggeringElement = $form_state->getTriggeringElement();
+    $pressedBtnName = $triggeringElement['#name'] ?? '';
+
+    if ($pressedBtnName === 'btn_get_first_step') {
+      $this->setNextStep($form_state, 1);
+      $form_state->setRebuild();
+    }
+
+    if ($pressedBtnName === 'btn_reset_and_get_first_step') {
+      $this->setNextStep($form_state, 1);
+      //As we don't set setRebuilt() here, all form_state->storage will be lost,
+      //so effectively form will be reset to default.
+    }
   }
 
   public function saveUpdateValidate(array &$form, FormStateInterface $form_state) {
