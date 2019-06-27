@@ -9,10 +9,12 @@
 namespace Drupal\sherlock_d8\CoreClasses\DatabaseManager;
 
 use Drupal\Core\Database\Connection;
+use PDO;
 
 class DatabaseManager {
-  protected $mappedData = null;
+  protected $mappedData = [];
   protected $selectedTable = null;
+  protected $fieldsToGet = [];
 
   /**
    * @var \Drupal\Core\Database\Connection $dbConnection
@@ -37,6 +39,38 @@ class DatabaseManager {
     return $this;
   }
 
+  public function setFieldsToGet($fieldsToGet) {
+    $this->fieldsToGet = $fieldsToGet;
+    return $this;
+  }
+
+  /**
+   * This method is for selecting records in DB table by specified criterion ($assocWhereClause).
+   * Result will be an array, keyed with values from table field/column, specified in $keyResultBy parameter ($keyResultBy is just a string with name of column),
+   * and VALUES will be associative sub-arrays with all other field values.
+   * Fields, need to be selected from table can be limited by setFieldsToGet() method, which need to be placed BEFORE this method in calling chain.
+   * @param array $assocWhereClause
+   * @param string $keyResultBy
+   * @return array
+   */
+  public function selectRecords(array $assocWhereClause, string $keyResultBy): array {
+    $query = $this->dbConnection->select($this->selectedTable); //This is equivalent of FROM table_name
+
+    //Here we'll add as many '=' conditions as number of values in $assocWhereClause array.
+    foreach ($assocWhereClause as $fieldName => $fieldValue) {
+      $query->condition($this->selectedTable.'.'.$fieldName, $fieldValue, '=');
+    }
+    unset ($fieldName, $fieldValue);
+
+    //This is equivalent of SELECT field_1, field_2, field_5 to select SOME fields from table.
+    //If not set, $this->fieldsToGet == [] by default, so ALL fields will be selected.
+    $query->fields($this->selectedTable, $this->fieldsToGet);
+
+    $result = $query->execute()->fetchAllAssoc($keyResultBy, PDO::FETCH_ASSOC);
+
+    return $result;
+  }
+
   public function insertRecord() {
     //TODO: Wrap in try-catch
     $this->dbConnection->insert($this->selectedTable)->fields($this->mappedData)->execute();
@@ -44,7 +78,7 @@ class DatabaseManager {
     return TRUE;
   }
 
-  public function updateRecord($assocWhereClause) {
+  public function updateRecords($assocWhereClause) {
     $query = $this->dbConnection->update($this->selectedTable); //This is equivalent of FROM table_name
 
     //Here we'll add as many '=' conditions as number of values in $assocWhereClause array.

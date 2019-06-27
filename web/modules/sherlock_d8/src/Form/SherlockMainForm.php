@@ -88,9 +88,21 @@ class SherlockMainForm extends FormBase {
 
         if($userAuthenticated) {
 
+          //Load saved searches of CURRENT USER:
+          $recordsSelectCriterea = [
+            'uid' => $this->currentUser()->id(),
+          ];
+          $currentUserRecords = $this->dbConnection->selectTable('sherlock_user_input')->setFieldsToGet(['id', 'name'])->selectRecords($recordsSelectCriterea, 'id');
+
+          //We also need to rebuild a bit our user records, make it more flat, because now it 2-dimensional:
+          foreach ($currentUserRecords as &$record) {
+            $record = $record['name'];
+          }
+          unset($record);
+
           $form['saved_search_selector_block']['saved_search_selector'] = [
             '#type' => 'select',
-            '#options' => [0 => 'First option', 1 => 'Second option', 2 => 'Third more long option than previous...',],
+            '#options' => $currentUserRecords,
             '#title' => $this->t('Select and load saved search'),
             '#default_value' => null,
             '#empty_option' => $this->t('Select one of...'),
@@ -825,7 +837,7 @@ class SherlockMainForm extends FormBase {
       'name_hash' => $searchNameMD5Hash,
     ];
 
-    if ($this->dbConnection->setData($dataToUpdateExistingRecord)->selectTable('sherlock_user_input')->updateRecord($whereClause)) {
+    if ($this->dbConnection->setData($dataToUpdateExistingRecord)->selectTable('sherlock_user_input')->updateRecords($whereClause)) {
       $this->messenger->addStatus('Existing search successfully updated.');
     } else {
       $this->messenger->addError('No records were updated, nothing to change.');
