@@ -88,7 +88,7 @@ class SherlockMainForm extends FormBase {
 
         if($userAuthenticated) {
 
-          //Load saved searches of CURRENT USER:
+          //Load CURRENT USER's list of saved searches:
           $recordsSelectCriterea = [
             'uid' => $this->currentUser()->id(),
           ];
@@ -113,14 +113,20 @@ class SherlockMainForm extends FormBase {
             '#type' => 'submit',
             '#value' => $this->t('Load'),
             '#name' => 'btn_loadsearch',
-            '#submit' => [],
+            '#limit_validation_errors' => [['saved_search_selector_block', 'saved_search_selector',],],
+            '#submit' => [
+              '::loadSearchHandler'
+            ],
           ];
 
           $form['saved_search_selector_block']['btn_delete'] = [
             '#type' => 'submit',
             '#value' => $this->t('Delete'),
             '#name' => 'btn_deletesearch',
-            '#submit' => [],
+            '#limit_validation_errors' => [],
+            '#submit' => [
+              '::deleteSearchHandler'
+            ],
           ];
 
         } else {
@@ -275,10 +281,10 @@ class SherlockMainForm extends FormBase {
           foreach ($logicBlockValues as $itemKey => $itemValue) {
             if (is_array($itemValue)) {
               for ($i = 0; $i < count($itemValue['VALUES']); $i++) {
-                $form[$logicBlockKey][$itemKey]['VALUES'][$i]['textfield']['#default_value'] = $itemValue['VALUES'][$i]['textfield'];
+                $form[$logicBlockKey][$itemKey]['VALUES'][$i]['textfield']['#value'] = $itemValue['VALUES'][$i]['textfield'];
               }
             } else {
-              $form[$logicBlockKey][$itemKey]['#default_value'] = $itemValue;
+              $form[$logicBlockKey][$itemKey]['#value'] = $itemValue;
             }
           }
           unset($itemKey, $itemValue);
@@ -526,6 +532,47 @@ class SherlockMainForm extends FormBase {
     unset($key, $value);
 
     return $maxKey;
+  }
+
+  /**
+   * A handler function for Load button. It takes serialized form structure and form values from DB, unserialize it,
+   * and put to form_state->storage, where it will be checked on form build process. So, form will be pre-populated with values,
+   * and has appropriate structure, if user requested one of saved form from DB.
+   * @param array $form
+   * @param FormStateInterface $form_state
+   */
+  public function loadSearchHandler(array &$form, FormStateInterface $form_state) {
+    //Get id of selected search\record:
+    $recordIdToLoad = intval($form_state->getValue(['saved_search_selector_block', 'saved_search_selector']));
+
+    //Get current user ID (for security reasons - we will check DB for record with specified recordId AND userId,
+    //because recordId user can submit by any POST application and such way get access to records owned by other users.
+    //Checking for recordId AND userId is more secure, because user can't submit another's userId):
+    $currentUserId = $this->currentUser()->id();
+
+    if ($recordIdToLoad > 0 && $currentUserId > 0) {
+      $selectionCriterion = [
+        'id' => $recordIdToLoad,
+        'uid' => $currentUserId,
+      ];
+
+      //Load record from DB by it recordId AND userId:
+      $savedSearchData = $this->dbConnection->selectTable('sherlock_user_input')->setFieldsToGet(['id', 'serialized_form_structure', 'serialized_form_values'])->selectRecords($selectionCriterion, 'id');
+
+      $savedSearchData = array_shift($savedSearchData);
+
+      $formStructure = unserialize($savedSearchData['serialized_form_structure']);
+      $formValues = unserialize($savedSearchData['serialized_form_values']);
+
+      $form_state->set('user_added', $formStructure);
+      $form_state->set('form_state_values_snapshot', $formValues);
+    }
+
+    $form_state->setRebuild();
+  }
+
+  public function deleteSearchHandler(array &$form, FormStateInterface $form_state) {
+
   }
 
   public function btnAddvariationHandler(array &$form, FormStateInterface $form_state) {
