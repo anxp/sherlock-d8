@@ -78,9 +78,11 @@ class SherlockMainForm extends FormBase {
         $form['#title'] = $this->t('What are you looking for? Create your perfect search query!');
 
         //---------------- LOAD or DELETE saved search -----------------------------------------------------------------
+        $recordIdToLoad = intval($form_state->get('record_id_to_load'));
+
         $form['saved_search_selector_block'] = [
           '#type' => 'details',
-          '#open' => FALSE,
+          '#open' => (bool) $recordIdToLoad, //If recordIdToLoad == 0 (not set), this property will be == FALSE, so block will be rendered as closed.
           '#title' => 'Load saved search',
           '#prefix' => '<div class="container-inline">',
           '#suffix' => '</div>',
@@ -104,9 +106,9 @@ class SherlockMainForm extends FormBase {
             '#type' => 'select',
             '#options' => $currentUserRecords,
             '#title' => $this->t('Select and load saved search'),
-            '#default_value' => null,
+            '#default_value' => $recordIdToLoad === 0 ? null : $recordIdToLoad,
             '#empty_option' => $this->t('Select one of...'),
-            '#empty_value' => '',
+            '#empty_value' => 0,
           ];
 
           $form['saved_search_selector_block']['btn_load'] = [
@@ -277,6 +279,10 @@ class SherlockMainForm extends FormBase {
         foreach ($formStateValuesSnapshot as $logicBlockKey => $logicBlockValues) {
           //Check if $logicBlockValue contains something - we just want to skip a buttons or empty wrappers:
           if (empty($logicBlockValues) || !is_array($logicBlockValues)) {continue;}
+
+          //Check if current element is saved search selector dropdown menu,
+          //if it is - just skip it, because correct default value is already set to it.
+          if ($logicBlockKey === 'saved_search_selector_block') {continue;}
 
           foreach ($logicBlockValues as $itemKey => $itemValue) {
             if (is_array($itemValue)) {
@@ -566,9 +572,14 @@ class SherlockMainForm extends FormBase {
 
       $form_state->set('user_added', $formStructure);
       $form_state->set('form_state_values_snapshot', $formValues);
-    }
+      $form_state->set('record_id_to_load', $recordIdToLoad);
 
-    $form_state->setRebuild();
+      $form_state->setRebuild();
+    } else {
+
+      //If user selected default option from dropdown (or, in other words, does not selected any saved search, and $recordIdToLoad === 0) -> just reset form to default\empty:
+      $form_state->setRebuild(FALSE);
+    }
   }
 
   public function deleteSearchHandler(array &$form, FormStateInterface $form_state) {
