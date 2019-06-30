@@ -274,7 +274,7 @@ class SherlockMainForm extends FormBase {
 
         //TODO: Make a method from this. And check if $formStateValuesSnapshot is not empty before iterate it:
         //----------Prepopulate QUERY CONSTRUCTOR with saved values, if there are ones:---------------------------------
-        $formStateValuesSnapshot = $form_state->get(['form_state_values_snapshot']);
+        $formStateValuesSnapshot = $form_state->get('form_state_values_snapshot');
 
         foreach ($formStateValuesSnapshot as $logicBlockKey => $logicBlockValues) {
           //Check if $logicBlockValue contains something - we just want to skip a buttons or empty wrappers:
@@ -296,7 +296,6 @@ class SherlockMainForm extends FormBase {
           unset($itemKey, $itemValue);
         }
         unset($logicBlockKey, $logicBlockValues);
-
         //--------------------------------------------------------------------------------------------------------------
 
         break;
@@ -648,6 +647,30 @@ class SherlockMainForm extends FormBase {
   }
 
   public function previewValidateHandler(array &$form, FormStateInterface $form_state) {
+    /* ---------------- IMPORTANT FIX FOR CHECKBOXES BEHAVIOR ----------------------------------------------------------
+     * Checkboxes are very bad works with form_state->setRebuld.
+     * They are have a tendency to accumulate in CHECKED state, and it is very hard to remove once checked checkbox.
+     *
+     * For example, at first form submit user checked 1st checkbox, but then he decided to turn back ($form_state->setRebuld(TRUE)) and UNchecked 1st and checked 2nd checkbox.
+     * What we'll have in result? 1st checkbox will not be overwritten, but 2nd will be just added as checked to 1st one. So we will have TWO checkboxes at checked state.
+     *
+     * The only place, where checkboxes can be found in ACTUAL state - is form_state->input. But not-checked checkboxes at form_state->input have value === null.
+     * So we need to check if value === null, and replace it with 0. And put this corrected checkboxes set to form_state->values.
+     * */
+
+    $formStateUserInput = $form_state->getUserInput();
+    $resourcesChooserState = $formStateUserInput['resources_chooser'];
+
+    $correctedResourcesChooserState = [];
+    foreach ($resourcesChooserState as $checkBoxKey => $checkBoxValue) {
+      $correctedResourcesChooserState[$checkBoxKey] = $checkBoxValue ?? 0; // If $checkBoxValue === null, save this value as 0
+    }
+
+    $form_state->setValue('resources_chooser', $correctedResourcesChooserState); //Replace current checkboxes set with fixed one.
+
+    unset($checkBoxKey, $checkBoxValue, $formStateUserInput, $resourcesChooserState, $correctedResourcesChooserState);
+    /* ---------------- END CHECKBOXES FIX -------------------------------------------------------------------------- */
+
     //Check if at least one of the resources to search is checked (olx, besplatka, skylots...):
     $resources = $form_state->getValue('resources_chooser');
     $atLeastOneSelected = FALSE;
