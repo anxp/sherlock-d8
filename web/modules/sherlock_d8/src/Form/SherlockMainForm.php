@@ -125,7 +125,7 @@ class SherlockMainForm extends FormBase {
             '#type' => 'submit',
             '#value' => $this->t('Delete'),
             '#name' => 'btn_deletesearch',
-            '#limit_validation_errors' => [],
+            '#limit_validation_errors' => [['saved_search_selector_block', 'saved_search_selector',],],
             '#submit' => [
               '::deleteSearchHandler'
             ],
@@ -582,7 +582,35 @@ class SherlockMainForm extends FormBase {
   }
 
   public function deleteSearchHandler(array &$form, FormStateInterface $form_state) {
+    //Get id of selected search\record:
+    $recordIdToDelete = intval($form_state->getValue(['saved_search_selector_block', 'saved_search_selector']));
 
+    //Get current user ID (for security reasons - we will check DB for record with specified recordId AND userId,
+    //because recordId user can submit by any POST application and such way get access to records owned by other users.
+    //Checking for recordId AND userId is more secure, because user can't submit another's userId):
+    $currentUserId = $this->currentUser()->id();
+
+    if ($recordIdToDelete > 0 && $currentUserId > 0) {
+      $selectionCriterion = [
+        'id' => $recordIdToDelete,
+        'uid' => $currentUserId,
+      ];
+
+      //Delete record from DB by it recordId AND userId:
+      $isRecordDeleted = $this->dbConnection->selectTable('sherlock_user_input')->deleteRecords($selectionCriterion);
+
+      if ($isRecordDeleted) {
+        $this->messenger->addStatus('Record successfully deleted.');
+      } else {
+        $this->messenger->addError('An unexpected error has occurred. No records have been deleted.');
+      }
+      $form_state->setRebuild(FALSE);
+
+    } else {
+
+      //If user selected default option from dropdown (or, in other words, does not selected any saved search, and $recordIdToLoad === 0) -> just reset form to default\empty:
+      $form_state->setRebuild(FALSE);
+    }
   }
 
   public function btnAddvariationHandler(array &$form, FormStateInterface $form_state) {
@@ -874,9 +902,9 @@ class SherlockMainForm extends FormBase {
     ];
 
     if ($this->dbConnection->setData($dataToInsert)->selectTable('sherlock_user_input')->insertRecord()) {
-      $this->messenger->addStatus('Search settings and parameters were successfully saved.');
+      $this->messenger->addStatus('Search settings and parameters have been successfully saved.');
     } else {
-      $this->messenger->addError('An unexpected error occurred on saving.');
+      $this->messenger->addError('An unexpected error has occurred on saving.');
     }
   }
 
@@ -919,9 +947,9 @@ class SherlockMainForm extends FormBase {
     ];
 
     if ($this->dbConnection->setData($dataToUpdateExistingRecord)->selectTable('sherlock_user_input')->updateRecords($whereClause)) {
-      $this->messenger->addStatus('Existing search successfully updated.');
+      $this->messenger->addStatus('Existing search has been successfully updated.');
     } else {
-      $this->messenger->addError('No records were updated, nothing to change.');
+      $this->messenger->addError('No records have been updated, nothing to change.');
     }
   }
 
