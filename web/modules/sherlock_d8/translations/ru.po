@@ -99,10 +99,41 @@ msgstr "Как долго хранить ваш поиск?"
 msgid "Save and overwrite if exists"
 msgstr "Сохранить и перезаписать существующий"
 
+msgid "Record successfully deleted."
+msgstr "Запись успешно удалена."
 
+msgid "An unexpected error has occurred. No records have been deleted."
+msgstr "Произошла непредвиденная ошибка. Ни одна запись не была удалена."
 
+msgid "An unexpected error has occurred. No records have been deleted."
+msgstr "Произошла непредвиденная ошибка. Ни одна запись не была удалена."
 
+msgid "Please, select at least one resource where to search."
+msgstr "Пожалуйста, выберите хотя бы один маркет для поиска."
 
+msgid "No keywords specified to search. Add at least one keyword or phrase."
+msgstr "Не задано ключевых слов для поиска. Добавьте хотя бы одно ключевое слово или фразу."
 
+msgid "Please, provide correct name for your search."
+msgstr "Пожалуйста, задайте корректное имя для вашего поиска."
 
+msgid "Select how many days your search will be kept."
+msgstr "Выберите сколько дней будет храниться поиск."
 
+msgid "This name is already taken, we can't save new search with the same name. But you can overwrite existing search with new data."
+msgstr "Это имя уже занято. Вы можете задать другое имя или перезаписать уже существующий поиск."
+
+msgid "A record with the specified name does not exist. Use \"Save\" button to save new record."
+msgstr "Записи с указанным именем не существует. Используйте кнопку Сохранить чтобы сохранить новую запись."
+
+msgid "Search settings and parameters have been successfully saved."
+msgstr "Настройки и параметры поиска успешно сохранены."
+
+msgid "An unexpected error has occurred on saving."
+msgstr "В процессе сохранения произошла непредвиденная ошибка."
+
+msgid "Existing search has been successfully updated."
+msgstr "Существующий поиск успешно обновлен."
+
+msgid "No records have been updated, nothing to change."
+msgstr "Ни одна запись не была обновлена. Нет записей удовлетворяющих критериям отбора."
