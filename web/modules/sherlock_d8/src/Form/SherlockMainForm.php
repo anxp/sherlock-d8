@@ -286,8 +286,8 @@ class SherlockMainForm extends FormBase {
 
           foreach ($logicBlockValues as $itemKey => $itemValue) {
             if (is_array($itemValue)) {
-              for ($i = 0; $i < count($itemValue['VALUES']); $i++) {
-                $form[$logicBlockKey][$itemKey]['VALUES'][$i]['textfield']['#value'] = $itemValue['VALUES'][$i]['textfield'];
+              foreach ($itemValue['VALUES'] as $digitIndex => $textField) {
+                $form[$logicBlockKey][$itemKey]['VALUES'][$digitIndex]['textfield']['#value'] = $textField['textfield'];
               }
             } else {
               $form[$logicBlockKey][$itemKey]['#value'] = $itemValue;
