@@ -1,0 +1,108 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Example event\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "What are you looking for? Create your perfect search query!"
+msgstr "Что будем искать? Создайте идеальный поисковый запрос и используйте его сколько угодно раз!"
+
+msgid "Load saved search"
+msgstr "Загрузить сохраненный поиск"
+
+msgid "Select and load saved search"
+msgstr "Выберите сохраненный поиск"
+
+msgid "Select one of..."
+msgstr "Выберите запись..."
+
+msgid "Load"
+msgstr "Загрузить"
+
+msgid "Choose flea-markets websites to search on"
+msgstr "Выберите сайты объявлений, на которых будем искать"
+
+msgid "Open this market\'s website in new tab"
+msgstr "Открыть сайт маркета в новой вкладке"
+
+msgid "KEYWORD-"
+msgstr "Ключевое слово - "
+
+msgid "Keyword Variations"
+msgstr "Варианты написания"
+
+msgid "Variation"
+msgstr "Вариант"
+
+msgid "Remove"
+msgstr "Удалить"
+
+msgid "Add Word Spelling Variant"
+msgstr "Добавить вариант написания"
+
+msgid "Additional search parameters"
+msgstr "Дополнительные параметры поиска"
+
+msgid "Search in descriptions too (if resource supports)."
+msgstr "Также искать в описании товаров (если ресурс поддерживает)."
+
+msgid "Filter items by price:"
+msgstr "Фильтровать по цене:"
+
+msgid "Price from"
+msgstr "Минимальная цена"
+
+msgid "Price to"
+msgstr "Максимальная цена"
+
+msgid "Add Keyword"
+msgstr "Добавить ключевое слово"
+
+msgid "Start Search"
+msgstr "Начать поиск"
+
+msgid "Reset All"
+msgstr "Сбросить все"
+
+msgid "Please fill out this field."
+msgstr "Пожалуйста, заполните это поле."
+
+msgid "Login for full access"
+msgstr "Войдите в систему для получения доступа"
+
+msgid "You need to login or register to be able to load and save searches."
+msgstr "Необходимо войти в систему или зарегистрироваться, чтобы иметь возможность загружать и сохранять поисковые запросы."
+
+msgid "Preview and save results."
+msgstr "Просмотр и сохранение результатов."
+
+msgid "Back to constructor"
+msgstr "Вернуться в конструктор"
+
+msgid "Reset and back to constructor"
+msgstr "Сбросить и вернуться в конструктор"
+
+msgid "Save search"
+msgstr "Сохранить поиск"
+
+msgid "List of constructed search queries"
+msgstr "Поисковые запросы, по которым производился поиск"
+
+msgid "Enter name for your search"
+msgstr "Задайте имя для вашего поиска"
+
+msgid "How long to store and maintain your saved search?"
+msgstr "Как долго хранить ваш поиск?"
+
+msgid "Save and overwrite if exists"
+msgstr "Сохранить и перезаписать существующий"
+
+
+
+
+
+
+
+

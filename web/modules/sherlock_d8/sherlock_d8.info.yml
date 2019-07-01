@@ -4,3 +4,5 @@ type: module
 version: 0.1.0
 core: 8.x
 package: MAATCH
+'interface translation project': sherlock_d8
+'interface translation server pattern': 'modules/sherlock_d8/translations/%language.po'

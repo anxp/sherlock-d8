@@ -83,7 +83,7 @@ class SherlockMainForm extends FormBase {
         $form['saved_search_selector_block'] = [
           '#type' => 'details',
           '#open' => (bool) $recordIdToLoad, //If recordIdToLoad == 0 (not set), this property will be == FALSE, so block will be rendered as closed.
-          '#title' => 'Load saved search',
+          '#title' => $this->t('Load saved search'),
           '#prefix' => '<div class="container-inline">',
           '#suffix' => '</div>',
         ];
@@ -155,14 +155,14 @@ class SherlockMainForm extends FormBase {
           $currentMarketId = $object::getMarketId();
           $currentMarketName = $object::getMarketName();
           $currentMarketUrl = $object::getBaseURL();
-          $formattedList[$currentMarketId] = $currentMarketName . ' [<a target="_blank" href="' . $currentMarketUrl . '">' . t('Open this market\' website in new tab') . '</a>]';
+          $formattedList[$currentMarketId] = $currentMarketName . ' [<a target="_blank" href="' . $currentMarketUrl . '">' . t('Open this market\'s website in new tab') . '</a>]';
         }
         unset($object, $currentMarketId, $currentMarketName, $currentMarketUrl, $fleamarketObjects);
 
         $form['resources_chooser'] = [
           '#type' => 'checkboxes',
           '#options' => $formattedList,
-          '#title' => 'Choose flea-markets websites to search on',
+          '#title' => $this->t('Choose flea-markets websites to search on'),
         ];
 
         $form['query_constructor_block'] = [
@@ -196,24 +196,24 @@ class SherlockMainForm extends FormBase {
         $form['additional_params'] = [
           '#type' => 'details',
           '#open' => FALSE,
-          '#title' => 'Additional search parameters',
+          '#title' => $this->t('Additional search parameters'),
         ];
 
         //By default, search performs only in headers, but some resources (OLX and Skylots, but not Besplatka) also supports
         //search in body. Technically, it adds specific suffix to URL.
         $form['additional_params']['dscr_chk'] = [
           '#type' => 'checkbox',
-          '#title' => 'Search in descriptions too (if resource supports).',
+          '#title' => $this->t('Search in descriptions too (if resource supports).'),
         ];
 
         $form['additional_params']['filter_by_price'] = [
           '#type' => 'checkbox',
-          '#title' => 'Filter items by price:',
+          '#title' => $this->t('Filter items by price:'),
         ];
 
         $form['additional_params']['price_from'] = [
           '#type' => 'textfield',
-          '#title' => 'Price from',
+          '#title' => $this->t('Price from'),
           '#default_value' => '',
           '#size' => 10,
           '#maxlength' => 10,
@@ -224,7 +224,7 @@ class SherlockMainForm extends FormBase {
 
         $form['additional_params']['price_to'] = [
           '#type' => 'textfield',
-          '#title' => 'Price to',
+          '#title' => $this->t('Price to'),
           '#default_value' => '',
           '#size' => 10,
           '#maxlength' => 10,
@@ -240,7 +240,7 @@ class SherlockMainForm extends FormBase {
         //...and three main controls buttons () in this wrapper:
         $form['first_step_buttons_wrapper']['btn_addterm'] = [
           '#type' => 'submit',
-          '#value' => 'Add Keyword',
+          '#value' => $this->t('Add Keyword'),
           '#name' => 'btn_addterm',
           '#submit' => [
             '::addTermHandler',
@@ -252,7 +252,7 @@ class SherlockMainForm extends FormBase {
 
         $form['first_step_buttons_wrapper']['btn_preview'] = [
           '#type' => 'submit',
-          '#value' => 'Preview Results',
+          '#value' => $this->t('Start Search'),
           '#name' => 'btn_preview',
           '#validate' => [
             '::previewValidateHandler'
@@ -264,7 +264,7 @@ class SherlockMainForm extends FormBase {
 
         $form['first_step_buttons_wrapper']['btn_reset'] = [
           '#type' => 'submit',
-          '#value' => 'Reset All',
+          '#value' => $this->t('Reset All'),
           '#name' => 'btn_reset',
           '#limit_validation_errors' => [], //We don't want validate any errors for this submit button, because this is RESET button!
           '#submit' => [
@@ -470,7 +470,7 @@ class SherlockMainForm extends FormBase {
     //Create a new empty container just with title:
     $newBlock = [
       '#type' => 'fieldset',
-      '#title' => 'KEYWORD-'.$newBlockNo,
+      '#title' => $this->t('KEYWORD-').$newBlockNo,
       '#attributes' => ['id' => 'KEYWORD-BLOCK-'.$newBlockNo],
     ];
 
@@ -479,7 +479,7 @@ class SherlockMainForm extends FormBase {
       '#type' => 'actions',
       'btn_addvariation-'.$newBlockNo => [ //...and new button inside this wrapper
         '#type' => 'submit',
-        '#value' => 'Add Word Spelling Variant',
+        '#value' => $this->t('Add Word Spelling Variant'),
         '#name' => 'btn_addvariation-'.$newBlockNo,
         '#submit' => ['::btnAddvariationHandler',],
         '#ajax' => ['callback' => '::constructorBlockAjaxReturn',],
@@ -489,7 +489,7 @@ class SherlockMainForm extends FormBase {
     //Place a very first empty textfield to this new block. Other textfields will be added by user by pressing "Add Variation" button:
     $newBlock['VALUES'] = [
       '#type' => 'fieldset',
-      '#title' => 'Keyword Variations',
+      '#title' => $this->t('Keyword Variations'),
       0 => $this->newVariationField($newBlockNo, 0),
     ];
 
@@ -506,12 +506,12 @@ class SherlockMainForm extends FormBase {
       'textfield' => [
         '#type' => 'textfield',
         '#required' => TRUE,
-        '#title' => 'Variation '.$blockNumber.'/'.$variationNumber,
+        '#title' => $this->t('Variation').' '.$blockNumber.'/'.$variationNumber,
       ],
       //Button for remove this textfield:
       'rm_this_variation_btn' => [
         '#type' => 'submit',
-        '#value' => 'Remove',
+        '#value' => $this->t('Remove'),
         '#name' => 'rm_variation_BLOCK:FIELD-'.$blockNumber.':'.$variationNumber,
         '#submit' => ['::btnRemoveThisVariation',],
         '#ajax' => ['callback' => '::constructorBlockAjaxReturn',],
