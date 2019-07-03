@@ -10,6 +10,7 @@ namespace Drupal\sherlock_d8\CoreClasses\FileManager;
 
 use Drupal\sherlock_d8\CoreClasses\TextUtilities\TextUtilities;
 use Drupal\Core\File\FileSystemInterface;
+use finfo;
 
 class FileManager {
   //Just the most popular user agent, it can be overriden by setUserAgent() method:
@@ -123,7 +124,13 @@ class FileManager {
     $ext = $this->extractExtensionFromURL($url);
     $urlHash = hash($this->hashAlgo, $url);
 
-    return $ext ? ($urlHash.'.'.$ext) : $urlHash; //If no extension determined we just leave filename without extension.
+    if ($ext) {
+      return $urlHash . '.' . $ext;
+    } else {
+      //If no extension found in URL string, we try to extract extension from MIME Type:
+      $extDetectedByMIME = $this->extractExtensionFromMIME();
+      return $urlHash . '.' . $extDetectedByMIME;
+    }
   }
 
   /**
@@ -151,6 +158,39 @@ class FileManager {
     // 5. And finally - return extension, if something like extension has been found:
 		return $lastPathPart;
 	}
+
+	protected function extractExtensionFromMIME(): string {
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mimeType = $finfo->buffer($this->fileContent);
+    $ext = '';
+
+    switch ($mimeType) {
+      case 'image/jpeg':
+        $ext = 'jpeg';
+        break;
+
+      case 'image/gif':
+        $ext = 'gif';
+        break;
+
+      case 'image/ief':
+        $ext = 'ief';
+        break;
+
+      case 'image/tiff':
+        $ext = 'tiff';
+        break;
+
+      case 'image/x-xwindowdump':
+        $ext = 'xwd';
+        break;
+
+      default:
+        $ext = 'unk'; //If no MIME Type had been matched, return unknown "unk" extension.
+    }
+
+    return $ext;
+  }
 
 	public function saveFileManaged(bool $markPermanent = FALSE, int $replace = FileSystemInterface::EXISTS_REPLACE): self {
     if ($this->isFileLoaded === FALSE) {
