@@ -146,6 +146,7 @@ class SherlockMainForm extends FormBase {
 
         //Print out supported flea-markets. TODO: maybe this output better to do with theme function and template file?
         $formattedList = [];
+        $resourcesChooserDefault = [];
 
         /**
          * @var \Drupal\sherlock_d8\CoreClasses\MarketReference\iMarketReference $object
@@ -156,6 +157,7 @@ class SherlockMainForm extends FormBase {
           $currentMarketName = $object::getMarketName();
           $currentMarketUrl = $object::getBaseURL();
           $formattedList[$currentMarketId] = $currentMarketName . ' [<a target="_blank" href="' . $currentMarketUrl . '">' . t('Open this market\'s website in new tab') . '</a>]';
+          $resourcesChooserDefault[$currentMarketId] = 0; //We just want all checkboxes to be unchecked.
         }
         unset($object, $currentMarketId, $currentMarketName, $currentMarketUrl, $fleamarketObjects);
 
@@ -163,6 +165,7 @@ class SherlockMainForm extends FormBase {
           '#type' => 'checkboxes',
           '#options' => $formattedList,
           '#title' => $this->t('Choose flea-markets websites to search on'),
+          '#default_value' => $resourcesChooserDefault,
         ];
 
         $form['query_constructor_block'] = [
@@ -204,11 +207,13 @@ class SherlockMainForm extends FormBase {
         $form['additional_params']['dscr_chk'] = [
           '#type' => 'checkbox',
           '#title' => $this->t('Search in descriptions too (if resource supports).'),
+          '#default_value' => 0,
         ];
 
         $form['additional_params']['filter_by_price'] = [
           '#type' => 'checkbox',
           '#title' => $this->t('Filter items by price:'),
+          '#default_value' => 0,
         ];
 
         $form['additional_params']['price_from'] = [
@@ -276,26 +281,47 @@ class SherlockMainForm extends FormBase {
         //----------Prepopulate QUERY CONSTRUCTOR with saved values, if there are ones:---------------------------------
         $formStateValuesSnapshot = $form_state->get('form_state_values_snapshot');
 
-        foreach ($formStateValuesSnapshot as $logicBlockKey => $logicBlockValues) {
+        foreach ($formStateValuesSnapshot as $logicBlockKey => $logicBlockValue) {
           //Check if $logicBlockValue contains something - we just want to skip a buttons or empty wrappers:
-          if (empty($logicBlockValues) || !is_array($logicBlockValues)) {continue;}
+          if (empty($logicBlockValue) || !is_array($logicBlockValue)) {
+            continue;
+          }
 
           //Check if current element is saved search selector dropdown menu,
           //if it is - just skip it, because correct default value is already set to it.
-          if ($logicBlockKey === 'saved_search_selector_block') {continue;}
-
-          foreach ($logicBlockValues as $itemKey => $itemValue) {
-            if (is_array($itemValue)) {
-              foreach ($itemValue['VALUES'] as $digitIndex => $textField) {
-                $form[$logicBlockKey][$itemKey]['VALUES'][$digitIndex]['textfield']['#value'] = $textField['textfield'];
-              }
-            } else {
-              $form[$logicBlockKey][$itemKey]['#value'] = $itemValue;
-            }
+          if ($logicBlockKey === 'saved_search_selector_block') {
+            continue;
           }
-          unset($itemKey, $itemValue);
+
+          if ($logicBlockKey === 'resources_chooser') {
+            $form[$logicBlockKey]['#default_value'] = $logicBlockValue;
+            continue;
+          }
+
+          if ($logicBlockKey === 'additional_params') {
+            $form[$logicBlockKey]['dscr_chk']['#default_value'] = $logicBlockValue['dscr_chk'];
+            $form[$logicBlockKey]['filter_by_price']['#default_value'] = $logicBlockValue['filter_by_price'];
+            $form[$logicBlockKey]['price_from']['#default_value'] = $logicBlockValue['price_from'];
+            $form[$logicBlockKey]['price_to']['#default_value'] = $logicBlockValue['price_to'];
+            continue;
+          }
+
+          if ($logicBlockKey === 'query_constructor_block') {
+            foreach ($logicBlockValue as $keywordIndex => $keywordValue) { //keywordIndex is like KEYWORD-0, KEYWORD-1...
+              foreach ($keywordValue as $key => $value) {
+                if ($key !== 'VALUES') {
+                  continue;
+                }
+                foreach ($value as $digitIndex => $textField) {
+                  $form[$logicBlockKey][$keywordIndex]['VALUES'][$digitIndex]['textfield']['#default_value'] = $textField['textfield'];
+                }
+                unset($digitIndex, $textField);
+              }
+              unset($key, $value);
+            }
+            unset($keywordIndex, $keywordValue);
+          }
         }
-        unset($logicBlockKey, $logicBlockValues);
         //--------------------------------------------------------------------------------------------------------------
 
         break;
@@ -507,6 +533,7 @@ class SherlockMainForm extends FormBase {
         '#type' => 'textfield',
         '#required' => TRUE,
         '#title' => $this->t('Variation').' '.$blockNumber.'/'.$variationNumber,
+        '#default_value' => '',
       ],
       //Button for remove this textfield:
       'rm_this_variation_btn' => [
@@ -675,30 +702,6 @@ class SherlockMainForm extends FormBase {
   }
 
   public function previewValidateHandler(array &$form, FormStateInterface $form_state) {
-    /* ---------------- IMPORTANT FIX FOR CHECKBOXES BEHAVIOR ----------------------------------------------------------
-     * Checkboxes are very bad works with form_state->setRebuld.
-     * They are have a tendency to accumulate in CHECKED state, and it is very hard to remove once checked checkbox.
-     *
-     * For example, at first form submit user checked 1st checkbox, but then he decided to turn back ($form_state->setRebuld(TRUE)) and UNchecked 1st and checked 2nd checkbox.
-     * What we'll have in result? 1st checkbox will not be overwritten, but 2nd will be just added as checked to 1st one. So we will have TWO checkboxes at checked state.
-     *
-     * The only place, where checkboxes can be found in ACTUAL state - is form_state->input. But not-checked checkboxes at form_state->input have value === null.
-     * So we need to check if value === null, and replace it with 0. And put this corrected checkboxes set to form_state->values.
-     * */
-
-    $formStateUserInput = $form_state->getUserInput();
-    $resourcesChooserState = $formStateUserInput['resources_chooser'];
-
-    $correctedResourcesChooserState = [];
-    foreach ($resourcesChooserState as $checkBoxKey => $checkBoxValue) {
-      $correctedResourcesChooserState[$checkBoxKey] = $checkBoxValue ?? 0; // If $checkBoxValue === null, save this value as 0
-    }
-
-    $form_state->setValue('resources_chooser', $correctedResourcesChooserState); //Replace current checkboxes set with fixed one.
-
-    unset($checkBoxKey, $checkBoxValue, $formStateUserInput, $resourcesChooserState, $correctedResourcesChooserState);
-    /* ---------------- END CHECKBOXES FIX -------------------------------------------------------------------------- */
-
     //Check if at least one of the resources to search is checked (olx, besplatka, skylots...):
     $resources = $form_state->getValue('resources_chooser');
     $atLeastOneSelected = FALSE;
