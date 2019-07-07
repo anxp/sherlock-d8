@@ -57,15 +57,17 @@ class SherlockMainForm extends FormBase {
     return 'sherlock_main_form';
   }
 
-  public function buildForm(array $form, FormStateInterface $form_state) {
-    //---------------- Authentication check ----------------------------------------------------------------------------
+  public function buildForm(array $form, FormStateInterface $form_state, $recordID = null) {
+    //================ IMPORTANT VARIABLES INITIALIZATION ==============================================================
     $userAuthenticated = false;
     if ($this->currentUser()->isAuthenticated()) {
       $userAuthenticated = true;
     }
-    //------------------------------------------------------------------------------------------------------------------
 
+    $recordID = intval($recordID); //Validate recordID because user can put anything here!
     $step = $this->getCurrentStep($form_state);
+    $isUserInteractsWithForm = (bool) $form_state->get('does_user_altering_form');
+    //------------------------------------------------------------------------------------------------------------------
 
     $form['#tree'] = TRUE;
     $form['#cache'] = ['max-age' => 0]; // Disable caching for the form
@@ -73,16 +75,21 @@ class SherlockMainForm extends FormBase {
 
     //Depending on which step we are on, show corresponding part of the form:
     switch ($step) {
-      // ----- STEP 1. Here we show constructor and give user ability to make his own search queries. ------------------
+      //====== STEP 1. Here we show constructor and give user ability to make his own search queries. ==================
+      //====== Or, load previously saved search. =======================================================================
       case 1:
+        //We load form from DB only on first page\form request.
+        //If user started to edit form (add or remove keywords or keyword variations) -> we skip loading form from DB because it's not actual anymore.
+        if (!$isUserInteractsWithForm) {
+          $requestedFormContent = $this->loadSavedForm($recordID);
+        }
+
         $form['#title'] = $this->t('What are you looking for? Create your perfect search query!');
 
-        //---------------- LOAD or DELETE saved search -----------------------------------------------------------------
-        $recordIdToLoad = intval($form_state->get('record_id_to_load'));
-
-        $form['saved_search_selector_block'] = [
+        //---------------- LOAD / DELETE saved search block ------------------------------------------------------------
+        $form['saved_search_block'] = [
           '#type' => 'details',
-          '#open' => (bool) $recordIdToLoad, //If recordIdToLoad == 0 (not set), this property will be == FALSE, so block will be rendered as closed.
+          '#open' => FALSE, //Block is closed by default, but it will be rendered as open if any record (by record ID) is selected to load, see method "injectFormValues()"
           '#title' => $this->t('Load saved search'),
           '#prefix' => '<div class="container-inline">',
           '#suffix' => '</div>',
@@ -102,30 +109,30 @@ class SherlockMainForm extends FormBase {
           }
           unset($record);
 
-          $form['saved_search_selector_block']['saved_search_selector'] = [
+          $form['saved_search_block']['saved_search_id'] = [
             '#type' => 'select',
             '#options' => $currentUserRecords,
             '#title' => $this->t('Select and load saved search'),
-            '#default_value' => $recordIdToLoad === 0 ? null : $recordIdToLoad,
+            '#default_value' => 0,
             '#empty_option' => $this->t('Select one of...'),
             '#empty_value' => 0,
           ];
 
-          $form['saved_search_selector_block']['btn_load'] = [
+          $form['saved_search_block']['btn_load'] = [
             '#type' => 'submit',
             '#value' => $this->t('Load'),
             '#name' => 'btn_loadsearch',
-            '#limit_validation_errors' => [['saved_search_selector_block', 'saved_search_selector',],],
+            '#limit_validation_errors' => [['saved_search_block', 'saved_search_id',],],
             '#submit' => [
               '::loadSearchHandler'
             ],
           ];
 
-          $form['saved_search_selector_block']['btn_delete'] = [
+          $form['saved_search_block']['btn_delete'] = [
             '#type' => 'submit',
             '#value' => $this->t('Delete'),
             '#name' => 'btn_deletesearch',
-            '#limit_validation_errors' => [['saved_search_selector_block', 'saved_search_selector',],],
+            '#limit_validation_errors' => [['saved_search_block', 'saved_search_id',],],
             '#submit' => [
               '::deleteSearchHandler'
             ],
@@ -133,7 +140,7 @@ class SherlockMainForm extends FormBase {
 
         } else {
 
-          $form['saved_search_selector_block']['not_auth_message'] = [
+          $form['saved_search_block']['not_auth_message'] = [
             '#type' => 'item',
             '#title' => $this->t('Login for full access'),
             '#description' => $this->t('You need to login or register to be able to load and save searches.'),
@@ -157,7 +164,7 @@ class SherlockMainForm extends FormBase {
           $currentMarketName = $object::getMarketName();
           $currentMarketUrl = $object::getBaseURL();
           $formattedList[$currentMarketId] = $currentMarketName . ' [<a target="_blank" href="' . $currentMarketUrl . '">' . t('Open this market\'s website in new tab') . '</a>]';
-          $resourcesChooserDefault[$currentMarketId] = 0; //We just want all checkboxes to be unchecked.
+          $resourcesChooserDefault[$currentMarketId] = 0; //We just want all checkboxes to be unchecked by default.
         }
         unset($object, $currentMarketId, $currentMarketName, $currentMarketUrl, $fleamarketObjects);
 
@@ -175,16 +182,24 @@ class SherlockMainForm extends FormBase {
           ],
         ];
 
-        //Check if form storage contains some explicitly saved user input. If not - we consider this is a new form.
-        $userAdded = $form_state->get('user_added');
-
-        //When user requests form first time -> we generate new block (container with one text field) and store it in $form_state['user_added']:
-        if (empty($userAdded)) {
-          $this->newBlock($form_state);
+        //Check from where get form structure:
+        //  1. If !empty($requestedFormContent) -> this means that user wants to load previously saved form from DB, so let's get it;
+        //  2. Else -> get 'user_added' from form_state->storage, maybe this variable is not empty, and has something:
+        if (!empty($requestedFormContent)) {
+          $userAdded = $requestedFormContent['form_structure'];
+          $form_state->set('user_added', $userAdded);
+        } else {
+          $userAdded = $form_state->get('user_added');
         }
 
-        //In case $form_state['user_added'] was just updated by newBlock(), get it again:
-        $userAdded = $form_state->get('user_added');
+        //If $userAdded IS STILL EMPTY -> this means that user requests form for the very first time (just started to work with form),
+        //so we generate default start set: a new block (container with one empty text field) and store it in $form_state['user_added']:
+        if (empty($userAdded)) {
+          $this->newBlock($form_state);
+
+          //In case $form_state['user_added'] was just updated by newBlock(), get it again:
+          $userAdded = $form_state->get('user_added');
+        }
 
         //If user begun to build the query, OR requested page first time (in both cases $form_state['user_added'] already exists at this point) ->
         //we show him actual content of $form_state['user_added']:
@@ -277,52 +292,22 @@ class SherlockMainForm extends FormBase {
           ],
         ];
 
-        //TODO: Make a method from this. And check if $formStateValuesSnapshot is not empty before iterate it:
-        //----------Prepopulate QUERY CONSTRUCTOR with saved values, if there are ones:---------------------------------
-        $formStateValuesSnapshot = $form_state->get('form_state_values_snapshot');
+        $dataToInject = [];
 
-        foreach ($formStateValuesSnapshot as $logicBlockKey => $logicBlockValue) {
-          //Check if $logicBlockValue contains something - we just want to skip a buttons or empty wrappers:
-          if (empty($logicBlockValue) || !is_array($logicBlockValue)) {
-            continue;
-          }
-
-          //Check if current element is saved search selector dropdown menu,
-          //if it is - just skip it, because correct default value is already set to it.
-          if ($logicBlockKey === 'saved_search_selector_block') {
-            continue;
-          }
-
-          if ($logicBlockKey === 'resources_chooser') {
-            $form[$logicBlockKey]['#default_value'] = $logicBlockValue;
-            continue;
-          }
-
-          if ($logicBlockKey === 'additional_params') {
-            $form[$logicBlockKey]['dscr_chk']['#default_value'] = $logicBlockValue['dscr_chk'];
-            $form[$logicBlockKey]['filter_by_price']['#default_value'] = $logicBlockValue['filter_by_price'];
-            $form[$logicBlockKey]['price_from']['#default_value'] = $logicBlockValue['price_from'];
-            $form[$logicBlockKey]['price_to']['#default_value'] = $logicBlockValue['price_to'];
-            continue;
-          }
-
-          if ($logicBlockKey === 'query_constructor_block') {
-            foreach ($logicBlockValue as $keywordIndex => $keywordValue) { //keywordIndex is like KEYWORD-0, KEYWORD-1...
-              foreach ($keywordValue as $key => $value) {
-                if ($key !== 'VALUES') {
-                  continue;
-                }
-                foreach ($value as $digitIndex => $textField) {
-                  $form[$logicBlockKey][$keywordIndex]['VALUES'][$digitIndex]['textfield']['#default_value'] = $textField['textfield'];
-                }
-                unset($digitIndex, $textField);
-              }
-              unset($key, $value);
-            }
-            unset($keywordIndex, $keywordValue);
-          }
+        if (isset($requestedFormContent['form_values'])) {
+          //The case, when user requested to load already existing search from DB:
+          $dataToInject = $requestedFormContent['form_values'];
+        } else {
+          //Other cases:
+          //  1. When user switch from second to first step of the form ->
+          //      we need to fill form elements with values from form_state->storage['form_state_values_snapshot'];
+          //  2. When form loading first time, and we don't have any data in form_state->storage['form_state_values_snapshot'],
+          //      but anyway we still need at least empty array to pass to injectFormValues();
+          $dataToInject = $form_state->get('form_state_values_snapshot');
+          $dataToInject = empty($dataToInject) ? [] : $dataToInject;
         }
-        //--------------------------------------------------------------------------------------------------------------
+
+        $this->injectFormValues($form, $dataToInject, $recordID);
 
         break;
 
@@ -489,6 +474,86 @@ class SherlockMainForm extends FormBase {
     return $form;
   }
 
+  /**
+   * This method returns saved form structure and form values from DB (from "sherlock_user_input" table).
+   * As data stores in DB in serialized form, this method also unserialize them and returns as array.
+   *
+   * @param int $recordID
+   * @return array
+   */
+  protected function loadSavedForm(int $recordID) {
+    $userID = $this->currentUser()->id();
+    if ($recordID <= 0 || $userID <=0) {return [];}
+
+    $selectionCriterion = [
+      'id' => $recordID,
+      'uid' => $userID,
+    ];
+
+    //Load record from DB by it recordID AND userId:
+    $savedSearchRaw = $this->dbConnection->selectTable('sherlock_user_input')->setFieldsToGet(['id', 'serialized_form_structure', 'serialized_form_values'])->selectRecords($selectionCriterion, 'id');
+    $savedSearch = array_shift($savedSearchRaw);
+    unset($savedSearchRaw);
+
+    $savedForm = [];
+
+    $savedForm['form_structure'] = unserialize($savedSearch['serialized_form_structure']);
+    $savedForm['form_values'] = unserialize($savedSearch['serialized_form_values']);
+
+    if (empty($savedForm['form_structure']) || empty($savedForm['form_values'])) {return [];}
+
+    return $savedForm;
+  }
+
+  protected function injectFormValues(array &$form, array $formStateValuesSnapshot, int $recordIdToLoad = 0) {
+    foreach ($formStateValuesSnapshot as $logicBlockKey => $logicBlockValue) {
+      //Check if $logicBlockValue contains something - we just want to skip a buttons or empty wrappers:
+      if (empty($logicBlockValue) || !is_array($logicBlockValue)) {
+        continue;
+      }
+
+      //Check if current element is saved search selector dropdown menu
+      if ($logicBlockKey === 'saved_search_block') {
+        //If recordIdToLoad == 0 (not set), this property will be == FALSE (by default), so block will be rendered as closed,
+        //if recordIdToLoad == some integer value -> block will be rendered as open, so user will easily see what record is loaded:
+        $form[$logicBlockKey]['#open'] = (bool) $recordIdToLoad;
+
+        //Dropdown menu will highlight active (loaded) record, if any:
+        $form['saved_search_block']['saved_search_id']['#default_value'] = $recordIdToLoad;
+        continue;
+      }
+
+      if ($logicBlockKey === 'resources_chooser') {
+        $form[$logicBlockKey]['#default_value'] = $logicBlockValue;
+        continue;
+      }
+
+      if ($logicBlockKey === 'additional_params') {
+        $form[$logicBlockKey]['dscr_chk']['#default_value'] = $logicBlockValue['dscr_chk'];
+        $form[$logicBlockKey]['filter_by_price']['#default_value'] = $logicBlockValue['filter_by_price'];
+        $form[$logicBlockKey]['price_from']['#default_value'] = $logicBlockValue['price_from'];
+        $form[$logicBlockKey]['price_to']['#default_value'] = $logicBlockValue['price_to'];
+        continue;
+      }
+
+      if ($logicBlockKey === 'query_constructor_block') {
+        foreach ($logicBlockValue as $keywordIndex => $keywordValue) { //keywordIndex is like KEYWORD-0, KEYWORD-1...
+          foreach ($keywordValue as $key => $value) {
+            if ($key !== 'VALUES') {
+              continue;
+            }
+            foreach ($value as $digitIndex => $textField) {
+              $form[$logicBlockKey][$keywordIndex]['VALUES'][$digitIndex]['textfield']['#default_value'] = $textField['textfield'];
+            }
+            unset($digitIndex, $textField);
+          }
+          unset($key, $value);
+        }
+        unset($keywordIndex, $keywordValue);
+      }
+    }
+  }
+
   protected function newBlock(FormStateInterface $form_state): void {
     $userAdded = $form_state->get('user_added');
     $newBlockNo = (is_array($userAdded)) ? count($userAdded) : 0;
@@ -567,50 +632,20 @@ class SherlockMainForm extends FormBase {
   }
 
   /**
-   * A handler function for Load button. It takes serialized form structure and form values from DB, unserialize it,
-   * and put to form_state->storage, where it will be checked on form build process. So, form will be pre-populated with values,
-   * and has appropriate structure, if user requested one of saved form from DB.
+   * A handler function for Load button.
    * @param array $form
    * @param FormStateInterface $form_state
    */
   public function loadSearchHandler(array &$form, FormStateInterface $form_state) {
     //Get id of selected search\record:
-    $recordIdToLoad = intval($form_state->getValue(['saved_search_selector_block', 'saved_search_selector']));
-
-    //Get current user ID (for security reasons - we will check DB for record with specified recordId AND userId,
-    //because recordId user can submit by any POST application and such way get access to records owned by other users.
-    //Checking for recordId AND userId is more secure, because user can't submit another's userId):
-    $currentUserId = $this->currentUser()->id();
-
-    if ($recordIdToLoad > 0 && $currentUserId > 0) {
-      $selectionCriterion = [
-        'id' => $recordIdToLoad,
-        'uid' => $currentUserId,
-      ];
-
-      //Load record from DB by it recordId AND userId:
-      $savedSearchData = $this->dbConnection->selectTable('sherlock_user_input')->setFieldsToGet(['id', 'serialized_form_structure', 'serialized_form_values'])->selectRecords($selectionCriterion, 'id');
-
-      $savedSearchData = array_shift($savedSearchData);
-
-      $formStructure = unserialize($savedSearchData['serialized_form_structure']);
-      $formValues = unserialize($savedSearchData['serialized_form_values']);
-
-      $form_state->set('user_added', $formStructure);
-      $form_state->set('form_state_values_snapshot', $formValues);
-      $form_state->set('record_id_to_load', $recordIdToLoad);
-
-      $form_state->setRebuild();
-    } else {
-
-      //If user selected default option from dropdown (or, in other words, does not selected any saved search, and $recordIdToLoad === 0) -> just reset form to default\empty:
-      $form_state->setRebuild(FALSE);
-    }
+    $recordIdToLoad = intval($form_state->getValue(['saved_search_block', 'saved_search_id']));
+    $form_state->setRedirect('sherlock_d8.mainform', ['recordID' => $recordIdToLoad]);
+    $form_state->setRebuild(FALSE);
   }
 
   public function deleteSearchHandler(array &$form, FormStateInterface $form_state) {
     //Get id of selected search\record:
-    $recordIdToDelete = intval($form_state->getValue(['saved_search_selector_block', 'saved_search_selector']));
+    $recordIdToDelete = intval($form_state->getValue(['saved_search_block', 'saved_search_id']));
 
     //Get current user ID (for security reasons - we will check DB for record with specified recordId AND userId,
     //because recordId user can submit by any POST application and such way get access to records owned by other users.
@@ -627,9 +662,9 @@ class SherlockMainForm extends FormBase {
       $isRecordDeleted = $this->dbConnection->selectTable('sherlock_user_input')->deleteRecords($selectionCriterion);
 
       if ($isRecordDeleted) {
-        $this->messenger->addStatus('Record successfully deleted.');
+        $this->messenger->addStatus($this->t('Record successfully deleted.'));
       } else {
-        $this->messenger->addError('An unexpected error has occurred. No records have been deleted.');
+        $this->messenger->addError($this->t('An unexpected error has occurred. No records have been deleted.'));
       }
       $form_state->setRebuild(FALSE);
 
@@ -655,6 +690,7 @@ class SherlockMainForm extends FormBase {
     $userAdded = $form_state->get('user_added');
     array_push($userAdded['KEYWORD-'.$btnId]['VALUES'], $newfield);
     $form_state->set('user_added', $userAdded);
+    $form_state->set('does_user_altering_form', TRUE);
 
     $form_state->setRebuild();
   }
@@ -665,6 +701,7 @@ class SherlockMainForm extends FormBase {
     if ($pressedBtnName != 'btn_addterm') {return;}
 
     $this->newBlock($form_state);
+    $form_state->set('does_user_altering_form', TRUE);
 
     $form_state->setRebuild();
   }
@@ -674,9 +711,10 @@ class SherlockMainForm extends FormBase {
     $pressedBtnName = $triggeringElement['#name'] ?? '';
     if ($pressedBtnName != 'btn_reset') {return;}
 
-    $form_state->set('user_added', null);
+    $form_state->set('user_added', null); //This option is not absolutely necessary, bet let it be here for reliability.
 
-    //And we don't need $form_state->setRebuild(); here, because we want absolutely clean new form!
+    //Redirect to form with default recordID parameter == 0, in other words - just load form as on first visit (effectively - reset all changes).
+    $form_state->setRedirect('sherlock_d8.mainform');
   }
 
   public function btnRemoveThisVariation(array &$form, FormStateInterface $form_state) {
@@ -697,6 +735,7 @@ class SherlockMainForm extends FormBase {
     unset($user_added['KEYWORD-'.$buttonBlockNo]['VALUES'][$buttonVariationNo]); //Field #$buttonVariationNo from block #$buttonBlockNo now DELETED.
 
     $form_state->set('user_added', $user_added);
+    $form_state->set('does_user_altering_form', TRUE);
 
     $form_state->setRebuild();
   }
@@ -823,9 +862,8 @@ class SherlockMainForm extends FormBase {
     }
 
     if ($pressedBtnName === 'btn_reset_and_get_first_step') {
-      $this->setNextStep($form_state, 1);
-      //As we don't set setRebuilt() here, all form_state->storage will be lost,
-      //so effectively form will be reset to default.
+      //Redirect to form with default recordID parameter == 0, in other words - just load form as on first visit (effectively - reset all changes).
+      $form_state->setRedirect('sherlock_d8.mainform');
     }
   }
 
@@ -848,24 +886,24 @@ class SherlockMainForm extends FormBase {
     ];
 
     if ($searchName !== $searchNameSanitized) {
-      $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', 'Please, provide correct name for your search.');
+      $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', $this->t('Please, provide correct name for your search.'));
     }
 
     if ($storingPeriodSanitized > 365) {
-      $form_state->setErrorByName('save_search_block][second_inline_container][storing_period_selector', 'Select how many days your search will be kept.');
+      $form_state->setErrorByName('save_search_block][second_inline_container][storing_period_selector', $this->t('Select how many days your search will be kept.'));
     }
 
     if ($pressedBtnName === 'btn_savesearch') {
       //Check if data with given user ID and name already exists:
       if ($this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($dataToCheck)) {
-        $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', 'This name is already taken, we can\'t save new search with the same name. But you can overwrite existing search with new data.');
+        $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', $this->t('This name is already taken, we can\'t save new search with the same name. But you can overwrite existing search with new data.'));
       }
     }
 
     if ($pressedBtnName === 'btn_overwriteexisting') {
       //Check if record we going to UPDATE is EXISTS:
       if (!$this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($dataToCheck)) {
-        $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', 'A record with the specified name does not exist. Use "Save" button to save new record.');
+        $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', $this->t('A record with the specified name does not exist. Use "Save" button to save new record.'));
       }
     }
 
@@ -905,9 +943,9 @@ class SherlockMainForm extends FormBase {
     ];
 
     if ($this->dbConnection->setData($dataToInsert)->selectTable('sherlock_user_input')->insertRecord()) {
-      $this->messenger->addStatus('Search settings and parameters have been successfully saved.');
+      $this->messenger->addStatus($this->t('Search settings and parameters have been successfully saved.'));
     } else {
-      $this->messenger->addError('An unexpected error has occurred on saving.');
+      $this->messenger->addError($this->t('An unexpected error has occurred on saving.'));
     }
   }
 
@@ -950,9 +988,9 @@ class SherlockMainForm extends FormBase {
     ];
 
     if ($this->dbConnection->setData($dataToUpdateExistingRecord)->selectTable('sherlock_user_input')->updateRecords($whereClause)) {
-      $this->messenger->addStatus('Existing search has been successfully updated.');
+      $this->messenger->addStatus($this->t('Existing search has been successfully updated.'));
     } else {
-      $this->messenger->addError('No records have been updated, nothing to change.');
+      $this->messenger->addError($this->t('No records have been updated, nothing to change.'));
     }
   }
 

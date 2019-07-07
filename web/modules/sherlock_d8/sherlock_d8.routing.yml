@@ -1,8 +1,9 @@
 sherlock_d8.mainform:
-  path: '/fm-scanner'
+  path: '/fm-scanner/{recordID}'
   defaults:
     _title: 'FleaMarket Scanner'
     _form: '\Drupal\sherlock_d8\Form\SherlockMainForm'
+    recordID: '0'
   requirements:
     _permission: 'access content'
 
