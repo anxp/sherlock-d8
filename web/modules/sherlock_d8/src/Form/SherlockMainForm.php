@@ -342,6 +342,12 @@ class SherlockMainForm extends FormBase {
 
         $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
 
+        //This is the full path to animated GIF (sand clock like in windows-98), showing to user, while php script is busy in parsing fleamarkets:
+        $schemeAndHttpHost = $this->getRequest()->getSchemeAndHttpHost();
+        $baseUrl = $this->getRequest()->getBaseUrl();
+        $modulePath = $this->moduleHandler->getModule('sherlock_d8')->getPath();
+        $animationPath = $schemeAndHttpHost . $baseUrl . '/' . $modulePath . '/templates/img/sand-clock.gif';
+
         $outputContainers = [];
         foreach ($form_state->getValue('resources_chooser') as $marketId) { //'olx', 'bsp', 'skl', or 0 (zero).
           //Let's create div-container for every checked resource, because we need place where to output parse result
@@ -349,7 +355,7 @@ class SherlockMainForm extends FormBase {
           $outputContainers[$marketId]['market_id'] = $marketId;
           $outputContainers[$marketId]['container_title'] = $fleamarketObjects[$marketId]::getMarketName();
           $outputContainers[$marketId]['container_id'] = $marketId.'-output-block';
-          $outputContainers[$marketId]['module_path'] = $this->moduleHandler->getModule('sherlock_d8')->getPath();
+          $outputContainers[$marketId]['loading_animation_path'] = $animationPath;
         }
         unset ($marketId);
 
