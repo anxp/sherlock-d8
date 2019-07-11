@@ -13,6 +13,7 @@ use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\ReplaceCommand;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Messenger\MessengerInterface;
+use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
 use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
@@ -31,12 +32,22 @@ class SherlockMainForm extends FormBase {
   protected $messenger;
 
   /**
+   * The module handler service.
+   *
+   * @var \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
+   */
+  protected $moduleHandler;
+
+  /**
    * Constructs a new SherlockMainForm object.
    * @param \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
+   * @param MessengerInterface $messenger
+   * @param ModuleHandlerInterface $moduleHandler
    */
-  public function __construct(DatabaseManager $dbConnection, MessengerInterface $messenger) {
+  public function __construct(DatabaseManager $dbConnection, MessengerInterface $messenger, ModuleHandlerInterface $moduleHandler) {
     $this->dbConnection = $dbConnection;
     $this->messenger = $messenger;
+    $this->moduleHandler = $moduleHandler;
   }
 
   public static function create(ContainerInterface $container) {
@@ -50,7 +61,12 @@ class SherlockMainForm extends FormBase {
      */
     $messenger = $container->get('messenger');
 
-    return new static($dbConnection, $messenger);
+    /**
+     * @var \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
+     */
+    $moduleHandler = $container->get('module_handler');
+
+    return new static($dbConnection, $messenger, $moduleHandler);
   }
 
   public function getFormId() {
@@ -333,6 +349,7 @@ class SherlockMainForm extends FormBase {
           $outputContainers[$marketId]['market_id'] = $marketId;
           $outputContainers[$marketId]['container_title'] = $fleamarketObjects[$marketId]::getMarketName();
           $outputContainers[$marketId]['container_id'] = $marketId.'-output-block';
+          $outputContainers[$marketId]['module_path'] = $this->moduleHandler->getModule('sherlock_d8')->getPath();
         }
         unset ($marketId);
 

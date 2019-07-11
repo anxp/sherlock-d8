@@ -13,9 +13,9 @@
     {% set container_id = 'container_id' %}
     {% set current_content_section_id = value.container_id %}
     <section id="{{ current_content_section_id }}">
-      <p>
-        Здесь текст
-      </p>
+      <div id="{{ current_content_section_id ~ '-animation'}}" class="center-screen">
+        <img src="{{ value.module_path }}/templates/img/sand-clock.gif" width="110" height="116">
+      </div>
     </section>
   {% endfor %}
 </div>

@@ -15,3 +15,4 @@ display_results_lib:
     component:
       css/content-output-tabs.css: {}
       css/content-output-table.css: {}
+      css/content-loading-placeholder.css: {}

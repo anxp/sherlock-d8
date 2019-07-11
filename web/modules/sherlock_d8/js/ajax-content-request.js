@@ -21,6 +21,10 @@ function getMarketOffers(selected_market) {
   ajaxObject.options.success = function(response, status, xmlhttprequest) {
     let currentMarketOutputBlock = document.getElementById(selected_market + '-output-block');
 
+    //Remove sand clock animation, because content is ready to be shown:
+    let currentLoadingAnimation = document.getElementById(selected_market + '-output-block-animation');
+    currentLoadingAnimation.style.display = 'none';
+
     //Let's prepare array with content for the table:
     let rowsNum = response.length;
     let tableContent = new Array(rowsNum);
