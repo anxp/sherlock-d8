@@ -12,7 +12,6 @@ use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\ReplaceCommand;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\Core\Messenger\MessengerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
 use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
@@ -25,13 +24,6 @@ class SherlockMainForm extends FormBase {
   protected $dbConnection;
 
   /**
-   * The messenger.
-   *
-   * @var \Drupal\Core\Messenger\MessengerInterface $messenger
-   */
-  protected $messenger;
-
-  /**
    * The module handler service.
    *
    * @var \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
@@ -41,12 +33,10 @@ class SherlockMainForm extends FormBase {
   /**
    * Constructs a new SherlockMainForm object.
    * @param \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
-   * @param MessengerInterface $messenger
    * @param ModuleHandlerInterface $moduleHandler
    */
-  public function __construct(DatabaseManager $dbConnection, MessengerInterface $messenger, ModuleHandlerInterface $moduleHandler) {
+  public function __construct(DatabaseManager $dbConnection, ModuleHandlerInterface $moduleHandler) {
     $this->dbConnection = $dbConnection;
-    $this->messenger = $messenger;
     $this->moduleHandler = $moduleHandler;
   }
 
@@ -57,16 +47,11 @@ class SherlockMainForm extends FormBase {
     $dbConnection = $container->get('sherlock_d8.database_manager');
 
     /**
-     * @var \Drupal\Core\Messenger\MessengerInterface $messenger
-     */
-    $messenger = $container->get('messenger');
-
-    /**
      * @var \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
      */
     $moduleHandler = $container->get('module_handler');
 
-    return new static($dbConnection, $messenger, $moduleHandler);
+    return new static($dbConnection, $moduleHandler);
   }
 
   public function getFormId() {
@@ -685,9 +670,9 @@ class SherlockMainForm extends FormBase {
       $isRecordDeleted = $this->dbConnection->selectTable('sherlock_user_input')->deleteRecords($selectionCriterion);
 
       if ($isRecordDeleted) {
-        $this->messenger->addStatus($this->t('Record successfully deleted.'));
+        $this->messenger()->addStatus($this->t('Record successfully deleted.'));
       } else {
-        $this->messenger->addError($this->t('An unexpected error has occurred. No records have been deleted.'));
+        $this->messenger()->addError($this->t('An unexpected error has occurred. No records have been deleted.'));
       }
       $form_state->setRebuild(FALSE);
 
@@ -966,9 +951,9 @@ class SherlockMainForm extends FormBase {
     ];
 
     if ($this->dbConnection->setData($dataToInsert)->selectTable('sherlock_user_input')->insertRecord()) {
-      $this->messenger->addStatus($this->t('Search settings and parameters have been successfully saved.'));
+      $this->messenger()->addStatus($this->t('Search settings and parameters have been successfully saved.'));
     } else {
-      $this->messenger->addError($this->t('An unexpected error has occurred on saving.'));
+      $this->messenger()->addError($this->t('An unexpected error has occurred on saving.'));
     }
   }
 
@@ -1011,9 +996,9 @@ class SherlockMainForm extends FormBase {
     ];
 
     if ($this->dbConnection->setData($dataToUpdateExistingRecord)->selectTable('sherlock_user_input')->updateRecords($whereClause)) {
-      $this->messenger->addStatus($this->t('Existing search has been successfully updated.'));
+      $this->messenger()->addStatus($this->t('Existing search has been successfully updated.'));
     } else {
-      $this->messenger->addError($this->t('No records have been updated, nothing to change.'));
+      $this->messenger()->addError($this->t('No records have been updated, nothing to change.'));
     }
   }
 
