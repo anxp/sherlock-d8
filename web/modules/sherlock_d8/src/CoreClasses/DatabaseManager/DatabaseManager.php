@@ -10,6 +10,7 @@ namespace Drupal\sherlock_d8\CoreClasses\DatabaseManager;
 
 use Drupal\Core\Database\Connection;
 use PDO;
+use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 
 class DatabaseManager {
   protected $mappedData = [];
@@ -78,7 +79,7 @@ class DatabaseManager {
     return TRUE;
   }
 
-  public function updateRecords($assocWhereClause) {
+  public function updateRecords(array $assocWhereClause): int {
     $query = $this->dbConnection->update($this->selectedTable); //This is equivalent of FROM table_name
 
     //Here we'll add as many '=' conditions as number of values in $assocWhereClause array.
@@ -91,14 +92,10 @@ class DatabaseManager {
 
     $numberOfRows = $query->execute();
 
-    if ($numberOfRows > 0) {
-      return TRUE;
-    } else {
-      return FALSE;
-    }
+    return $numberOfRows;
   }
 
-  public function deleteRecords($assocWhereClause) {
+  public function deleteRecords(array $assocWhereClause): int {
     $query = $this->dbConnection->delete($this->selectedTable); //This is equivalent of FROM table_name
 
     //Here we'll add as many '=' conditions as number of values in $assocWhereClause array.
@@ -109,11 +106,58 @@ class DatabaseManager {
 
     $numberOfRows = $query->execute();
 
-    if ($numberOfRows > 0) {
-      return TRUE;
-    } else {
-      return FALSE;
+    return $numberOfRows;
+  }
+
+  /**
+   * This method intended for deleting records from table, but with more flexibility than simple deleteRecords() method.
+   * Instead of using "condition" method under the hood, it uses "where", allowing user put virtually any valid SQL condition statement literally.
+   * If SQL statement contains variables, they should be replaced with placeholders (like :variable), and array with placeholders as keys
+   * and their values should be passed as part of corresponded value of $whereClausesSet array
+   * (so every element of $whereClausesSet should looks like $whereClausesSet[0]['where_condition'] and $whereClausesSet[0]['args']).
+   * If no variables needed to be passed, just empty array should be passed under 'args' key (but 'args' key should be set!).
+   *
+   * More details about $query->where($snippet, $args = array()): https://www.drupal.org/node/310086
+   *
+   * Example of client code:
+   *
+   * $currentTimestamp = time();
+   *
+   * $whereClause = [
+   *  0 => [
+   *    'where_condition' => '(`changed` + `keep_alive_days`*24*60*60) < :current_timestamp',
+   *    'args' => [':current_timestamp' => $currentTimestamp],
+   *  ],
+   * ];
+   *
+   * $deletedRecords = $dbConnection->selectTable('sherlock_user_input')->deleteRecordsExtended($whereClause);
+   *
+   * Please note! Table field names should be enclosed in backquotes.
+   *
+   * @param $whereClausesSet - array where each value is also array with SQL "where" statement and variables. If this array contain
+   * more than one element - these SQL statements will be combined through the operator AND (default Drupal DB API behavior).
+   * @return int - number of deleted records, or 0 if no records were deleted.
+   * @throws InvalidInputData
+   */
+  public function deleteRecordsExtended(array $whereClausesSet): int {
+    //Check input data:
+    foreach ($whereClausesSet as $whereClause) {
+      if (!isset($whereClause['where_condition']) || !isset($whereClause['args']) || !is_string($whereClause['where_condition']) || !is_array($whereClause['args'])) {
+        throw new InvalidInputData('Improperly filled $whereClausesSet. Each value of this array should be also array with keys \'where_condition\' and \'args\'. Where \'where_condition\' is any legal SQL WHERE fragment, and \'args\' is array where keys are placeholders (like :var), which values will be substituted into the where_condition.');
+      }
     }
+    unset($whereClause);
+
+    $query = $this->dbConnection->delete($this->selectedTable); //This is equivalent of FROM table_name
+
+    foreach ($whereClausesSet as $whereClause) {
+      $query->where($whereClause['where_condition'], $whereClause['args']);
+    }
+    unset($whereClause);
+
+    $numberOfRows = $query->execute();
+
+    return $numberOfRows;
   }
 
   /**
@@ -122,9 +166,9 @@ class DatabaseManager {
    * Input parameter is associative array, where keys are names of table fields, and values are corresponding values,
    * example of input data array: ['uid' => 1, 'title' => 'Hello world!', 'is_published' => 1]
    * @param $mappedData array
-   * @return bool
+   * @return int
    */
-  public function checkIfRecordExists(array $mappedData): bool {
+  public function checkIfRecordExists(array $mappedData): int {
     $query = $this->dbConnection->select($this->selectedTable); //This is equivalent of FROM table_name
 
     //Here we'll add as many '=' conditions as number of values in $mappedData array.
@@ -137,11 +181,7 @@ class DatabaseManager {
 
     $numberOfRows = $query->countQuery()->execute()->fetchField(); //This is equivalent of COUNT aggregation function.
 
-    if ($numberOfRows > 0) {
-      return TRUE;
-    } else {
-      return FALSE;
-    }
+    return $numberOfRows;
   }
 }
 

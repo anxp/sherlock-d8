@@ -1,4 +1,7 @@
 <?php
+
+use \Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
+
 function sherlock_d8_theme($existing, $type, $theme, $path) {
   return [
     'display_results' => [
@@ -13,4 +16,44 @@ function sherlock_d8_theme($existing, $type, $theme, $path) {
       'file' => 'sherlock_d8.theme.inc',
     ],
   ];
+}
+
+/**
+ * Implements hook_cron().
+ */
+function sherlock_d8_cron() {
+  /**
+   * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
+   */
+  $dbConnection = \Drupal::service('sherlock_d8.database_manager');
+
+  /**
+   * @var \Psr\Log\LoggerInterface $logger
+   */
+  $logger = \Drupal::logger('sherlock_d8');
+
+  $currentTimestamp = time();
+
+  $whereClause = [
+    0 => [
+      'where_condition' => '(`changed` + `keep_alive_days`*24*60*60) < :current_timestamp',
+      'args' => [':current_timestamp' => $currentTimestamp],
+    ],
+  ];
+
+  $deletedRecords = 0;
+
+  try {
+    $deletedRecords = $dbConnection->selectTable('sherlock_user_input')->deleteRecordsExtended($whereClause);
+  } catch (InvalidInputData $exception) {
+    $logger->error(
+      'Problem file: [' . $exception->getFile() . ']; ' . PHP_EOL .
+      'Line number: [' . $exception->getLine() . ']; ' . PHP_EOL .
+      'Error description: [' . $exception->getMessage() . '];'
+    );
+  }
+
+  if ($deletedRecords > 0) {
+    $logger->info('Automatically deleted [@num] expired users searches.', ['@num' => $deletedRecords]);
+  }
 }
