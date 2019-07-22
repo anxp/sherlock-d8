@@ -146,8 +146,8 @@ abstract class ItemSniper {
         $collectedItems[$cii]['title'] = trim($itemTitle);
         $collectedItems[$cii]['thumbnail'] = $itemThumbnail;
         $collectedItems[$cii]['link'] = $itemLink;
-        $collectedItems[$cii]['price_value'] = $itemPrice['price_value'];
-        $collectedItems[$cii]['price_currency'] = $itemPrice['price_currency'];
+        $collectedItems[$cii]['price_value'] = $itemPrice['price_value'] ?? '';
+        $collectedItems[$cii]['price_currency'] = $itemPrice['price_currency'] ?? '';
         $cii++;
       }
 
