@@ -46,11 +46,13 @@ function sherlock_d8_cron() {
   try {
     $deletedRecords = $dbConnection->selectTable('sherlock_user_input')->deleteRecordsExtended($whereClause);
   } catch (InvalidInputData $exception) {
-    $logger->error(
-      'Problem file: [' . $exception->getFile() . ']; ' . PHP_EOL .
-      'Line number: [' . $exception->getLine() . ']; ' . PHP_EOL .
-      'Error description: [' . $exception->getMessage() . '];'
-    );
+    $problemFilePath = $exception->getFile();
+    $lineNumber = $exception->getLine();
+    $description = $exception->getMessage();
+
+    $logger->error('Problem file: ' . $problemFilePath . '<br>' . 'Line number: ' . $lineNumber . '<br>' . 'Error description: ' . $description);
+
+    unset($problemFilePath, $lineNumber, $description);
   }
 
   if ($deletedRecords > 0) {
