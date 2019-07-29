@@ -391,31 +391,26 @@ class SherlockMainForm extends FormBase {
         ];
 
         if($userAuthenticated) {
-
-          $form['save_search_block']['first_inline_container'] = [
-            '#type' => 'container',
-            '#prefix' => '<div class="container-inline">',
-            '#suffix' => '</div>',
-          ];
-
-          $form['save_search_block']['first_inline_container']['search_name_textfield'] = [
+          $form['save_search_block']['search_name_textfield'] = [
             '#type' => 'textfield',
             '#title' => $this->t('Enter name for your search'),
             '#required' => TRUE,
             '#maxlength' => 255, //This field defined as VARCHAR(255) in DB.
           ];
 
-          $form['save_search_block']['second_inline_container'] = [
-            '#type' => 'container',
-            '#prefix' => '<div class="container-inline">',
-            '#suffix' => '</div>',
+          $form['save_search_block']['overwrite_existing_search'] = [
+            '#type' => 'checkbox',
+            '#title' => $this->t('Overwrite if exists'),
+            '#default_value' => 0,
           ];
 
-          $form['save_search_block']['second_inline_container']['storing_period_selector'] = [
+          $form['save_search_block']['storing_period_selector'] = [
             '#type' => 'select',
-            '#options' => [1 => '1 day', 7 => '7 days', 30 => '30 days', 90 => '90 days', 365 => '365 days'],
-            '#title' => $this->t('How long to store and maintain your saved search?'),
+            '#options' => [3 => '3 days', 7 => '7 days', 30 => '30 days', 90 => '90 days',],
+            '#title' => $this->t('How long to serve your task?'),
             '#default_value' => 7,
+            '#prefix' => '<div class="container-inline">',
+            '#suffix' => '</div>',
           ];
 
           $form['save_search_block']['buttons_block'] = [
@@ -432,19 +427,6 @@ class SherlockMainForm extends FormBase {
             ],
             '#submit' => [
               '::saveSubmit',
-            ],
-          ];
-
-          //Button for OVERWRITE EXISTING RECORD operation:
-          $form['save_search_block']['buttons_block']['btn_overwrite'] = [
-            '#type' => 'submit',
-            '#value' => $this->t('Save and overwrite if exists'),
-            '#name' => 'btn_overwriteexisting',
-            '#validate' => [
-              '::saveUpdateValidate'
-            ],
-            '#submit' => [
-              '::overwriteSubmit',
             ],
           ];
 
@@ -876,13 +858,12 @@ class SherlockMainForm extends FormBase {
   }
 
   public function saveUpdateValidate(array &$form, FormStateInterface $form_state) {
-    $triggeringElement = $form_state->getTriggeringElement();
-    $pressedBtnName = $triggeringElement['#name'] ?? '';
+    $overwriteExisting = intval($form_state->getValue(['save_search_block', 'overwrite_existing_search']));
 
-    $searchName = $form_state->getValue(['save_search_block', 'first_inline_container', 'search_name_textfield']);
+    $searchName = $form_state->getValue(['save_search_block', 'search_name_textfield']);
     $searchNameSanitized = filter_var($searchName, FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES);
 
-    $storingPeriod = $form_state->getValue(['save_search_block', 'second_inline_container', 'storing_period_selector']);
+    $storingPeriod = $form_state->getValue(['save_search_block', 'storing_period_selector']);
     $storingPeriodSanitized = intval($storingPeriod);
 
     //Calculate md5 hash of name of the search:
@@ -894,27 +875,17 @@ class SherlockMainForm extends FormBase {
     ];
 
     if ($searchName !== $searchNameSanitized) {
-      $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', $this->t('Please, provide correct name for your search.'));
+      $form_state->setErrorByName('save_search_block][search_name_textfield', $this->t('Please, provide correct name for your search.'));
     }
 
-    if ($storingPeriodSanitized > 365) {
-      $form_state->setErrorByName('save_search_block][second_inline_container][storing_period_selector', $this->t('Select how many days your search will be kept.'));
+    if ($storingPeriodSanitized > 90) {
+      $form_state->setErrorByName('save_search_block][storing_period_selector', $this->t('Select how many days your search will be served.'));
     }
 
-    if ($pressedBtnName === 'btn_savesearch') {
-      //Check if data with given user ID and name already exists:
-      if ($this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($dataToCheck)) {
-        $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', $this->t('This name is already taken, we can\'t save new search with the same name. But you can overwrite existing search with new data.'));
-      }
+    //If checkbox "Overwrite existing search" is UNCHECKED && If data with given user ID and name already exists:
+    if (!$overwriteExisting && $this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($dataToCheck)) {
+      $form_state->setErrorByName('save_search_block][search_name_textfield', $this->t('This name is already taken, we can\'t save new search with the same name. But you can overwrite existing search with new data.'));
     }
-
-    if ($pressedBtnName === 'btn_overwriteexisting') {
-      //Check if record we going to UPDATE is EXISTS:
-      if (!$this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($dataToCheck)) {
-        $form_state->setErrorByName('save_search_block][first_inline_container][search_name_textfield', $this->t('A record with the specified name does not exist. Use "Save" button to save new record.'));
-      }
-    }
-
   }
 
   public function saveSubmit(array &$form, FormStateInterface $form_state) {
@@ -922,6 +893,8 @@ class SherlockMainForm extends FormBase {
     $pressedBtnName = $triggeringElement['#name'] ?? '';
     if ($pressedBtnName != 'btn_savesearch') {return;}
 
+    $overwriteExisting = intval($form_state->getValue(['save_search_block', 'overwrite_existing_search']));
+
     //Get structure of user-configured block with keywords (this is only structure, values we'll get in next step...):
     $userAdded = $form_state->get('user_added');
 
@@ -929,56 +902,23 @@ class SherlockMainForm extends FormBase {
     $formStateValuesSnapshot = $form_state->get(['form_state_values_snapshot']);
 
     //Get user-given name for search:
-    $searchName = $form_state->getValue(['save_search_block', 'first_inline_container', 'search_name_textfield']);
+    $searchName = $form_state->getValue(['save_search_block', 'search_name_textfield']);
 
     //Calculate md5 hash of name of the search:
     $searchNameMD5Hash = hash('md5', $searchName);
 
-    //Get storage time:
-    $storingPeriod = $form_state->getValue(['save_search_block', 'second_inline_container', 'storing_period_selector']);
+    //Get serving time:
+    $storingPeriod = $form_state->getValue(['save_search_block', 'storing_period_selector']);
     $storingPeriodSanitized = intval($storingPeriod);
 
-    $dataToInsert = [
+    $condition = [
       'uid' => $this->currentUser()->id(),
-      'created' => time(),
-      'changed' => time(),
-      'name' => $searchName,
       'name_hash' => $searchNameMD5Hash,
-      'serialized_form_structure' => serialize($userAdded),
-      'serialized_form_values' => serialize($formStateValuesSnapshot),
-      'keep_alive_days' => $storingPeriodSanitized,
-      'delete' => 0,
     ];
 
-    if ($this->dbConnection->setData($dataToInsert)->selectTable('sherlock_user_input')->insertRecord()) {
-      $this->messenger()->addStatus($this->t('Search settings and parameters have been successfully saved.'));
-    } else {
-      $this->messenger()->addError($this->t('An unexpected error has occurred on saving.'));
-    }
-  }
+    $doesRecordExist = $this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($condition);
 
-  public function overwriteSubmit(array &$form, FormStateInterface $form_state) {
-    $triggeringElement = $form_state->getTriggeringElement();
-    $pressedBtnName = $triggeringElement['#name'] ?? '';
-    if ($pressedBtnName != 'btn_overwriteexisting') {return;}
-
-    //Get structure of user-configured block with keywords (this is only structure, values we'll get in next step...):
-    $userAdded = $form_state->get('user_added');
-
-    //Get values (not only of user-configured block with keywords but of whole form):
-    $formStateValuesSnapshot = $form_state->get(['form_state_values_snapshot']);
-
-    //Get user-given name for search:
-    $searchName = $form_state->getValue(['save_search_block', 'first_inline_container', 'search_name_textfield']);
-
-    //Calculate md5 hash of name of the search:
-    $searchNameMD5Hash = hash('md5', $searchName);
-
-    //Get storage time:
-    $storingPeriod = $form_state->getValue(['save_search_block', 'second_inline_container', 'storing_period_selector']);
-    $storingPeriodSanitized = intval($storingPeriod);
-
-    $dataToUpdateExistingRecord = [
+    $newData = [
       //'uid' => $this->currentUser()->id(),
       //'created' => time(),
       'changed' => time(),
@@ -990,15 +930,27 @@ class SherlockMainForm extends FormBase {
       'delete' => 0,
     ];
 
-    $whereClause = [
-      'uid' => $this->currentUser()->id(),
-      'name_hash' => $searchNameMD5Hash,
-    ];
+    //If this is new insertion, NOT an update of existing, let's add some info:
+    if (!$doesRecordExist) {
+      $newData['uid'] = $this->currentUser()->id();
+      $newData['created'] = time();
+      $newData['name'] = $searchName;
+      $newData['name_hash'] = $searchNameMD5Hash;
+    }
 
-    if ($this->dbConnection->setData($dataToUpdateExistingRecord)->selectTable('sherlock_user_input')->updateRecords($whereClause)) {
-      $this->messenger()->addStatus($this->t('Existing search has been successfully updated.'));
+    //If record exists and SHOULD be overwriten -> we do UPDATE method:
+    if ($doesRecordExist && $overwriteExisting) {
+      if ($this->dbConnection->setData($newData)->selectTable('sherlock_user_input')->updateRecords($condition)) {
+        $this->messenger()->addStatus($this->t('Existing search has been successfully updated.'));
+      }
+    }
+    //If record does not exist, just insert new record, ignoring value of checkbox (INSERT method):
+    elseif (!$doesRecordExist) {
+      if ($this->dbConnection->setData($newData)->selectTable('sherlock_user_input')->insertRecord()) {
+        $this->messenger()->addStatus($this->t('Search settings and parameters have been successfully saved.'));
+      }
     } else {
-      $this->messenger()->addError($this->t('No records have been updated, nothing to change.'));
+      $this->messenger()->addError($this->t('An unexpected error has occurred on saving.'));
     }
   }
 
