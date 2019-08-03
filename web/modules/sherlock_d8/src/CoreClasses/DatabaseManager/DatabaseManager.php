@@ -11,6 +11,7 @@ namespace Drupal\sherlock_d8\CoreClasses\DatabaseManager;
 use Drupal\Core\Database\Connection;
 use PDO;
 use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
+use Drupal\Core\Database\Query\ConditionInterface;
 
 class DatabaseManager {
   protected $mappedData = [];
@@ -50,18 +51,43 @@ class DatabaseManager {
    * Result will be an array, keyed with values from table field/column, specified in $keyResultBy parameter ($keyResultBy is just a string with name of column),
    * and VALUES will be associative sub-arrays with all other field values.
    * Fields, need to be selected from table can be limited by setFieldsToGet() method, which need to be placed BEFORE this method in calling chain.
+   *
+   * Example of $assocWhereClause array:
+   * $assocWhereClause = [
+   *  'field_name' => [
+   *    'comparison_value' => 'some_value',
+   *    'comparison_op' => '=',
+   *  ],
+   *
+   *  'other_field' => [
+   *    'comparison_value' => 1000,
+   *    'comparison_op' => '>',
+   *  ],
+   * ];
+   *
+   * If $useSimpleCondition == TRUE, condition can be set in more simplified way:
+   *
+   * $assocWhereClause = [
+   *  'field_name' => 'some_value',
+   *  'other_field' => '1000',
+   * ];
+   *
+   * This implies that the comparison operator is "="
+   *
    * @param array $assocWhereClause
    * @param string $keyResultBy
+   * @param bool $useSimpleCondition
    * @return array
+   * @throws InvalidInputData
    */
-  public function selectRecords(array $assocWhereClause, string $keyResultBy): array {
+  public function selectRecords(array $assocWhereClause, string $keyResultBy, bool $useSimpleCondition = TRUE): array {
+    if (!$useSimpleCondition) {
+      $this->validateWhereCondition($assocWhereClause);
+    }
+
     $query = $this->dbConnection->select($this->selectedTable); //This is equivalent of FROM table_name
 
-    //Here we'll add as many '=' conditions as number of values in $assocWhereClause array.
-    foreach ($assocWhereClause as $fieldName => $fieldValue) {
-      $query->condition($this->selectedTable.'.'.$fieldName, $fieldValue, '=');
-    }
-    unset ($fieldName, $fieldValue);
+    $query = $this->embedWhereConditionsIntoQuery($query, $assocWhereClause, $useSimpleCondition);
 
     //This is equivalent of SELECT field_1, field_2, field_5 to select SOME fields from table.
     //If not set, $this->fieldsToGet == [] by default, so ALL fields will be selected.
@@ -74,19 +100,19 @@ class DatabaseManager {
 
   public function insertRecord() {
     //TODO: Wrap in try-catch
-    $this->dbConnection->insert($this->selectedTable)->fields($this->mappedData)->execute();
-    //TODO: Rewrite this function to return TRUE or FALSE depending on was save successful or not.
-    return TRUE;
+    //TODO: Investigate, what returns this function when inserting many records.
+    $recordID = $this->dbConnection->insert($this->selectedTable)->fields($this->mappedData)->execute();
+    return $recordID;
   }
 
-  public function updateRecords(array $assocWhereClause): int {
+  public function updateRecords(array $assocWhereClause, bool $useSimpleCondition = TRUE): int {
+    if (!$useSimpleCondition) {
+      $this->validateWhereCondition($assocWhereClause);
+    }
+
     $query = $this->dbConnection->update($this->selectedTable); //This is equivalent of FROM table_name
 
-    //Here we'll add as many '=' conditions as number of values in $assocWhereClause array.
-    foreach ($assocWhereClause as $fieldName => $fieldValue) {
-      $query->condition($this->selectedTable.'.'.$fieldName, $fieldValue, '=');
-    }
-    unset ($fieldName, $fieldValue);
+    $query = $this->embedWhereConditionsIntoQuery($query, $assocWhereClause, $useSimpleCondition);
 
     $query->fields($this->mappedData); //This is equivalent of SET field_name=field_value
 
@@ -95,14 +121,14 @@ class DatabaseManager {
     return $numberOfRows;
   }
 
-  public function deleteRecords(array $assocWhereClause): int {
+  public function deleteRecords(array $assocWhereClause, bool $useSimpleCondition = TRUE): int {
+    if (!$useSimpleCondition) {
+      $this->validateWhereCondition($assocWhereClause);
+    }
+
     $query = $this->dbConnection->delete($this->selectedTable); //This is equivalent of FROM table_name
 
-    //Here we'll add as many '=' conditions as number of values in $assocWhereClause array.
-    foreach ($assocWhereClause as $fieldName => $fieldValue) {
-      $query->condition($this->selectedTable.'.'.$fieldName, $fieldValue, '=');
-    }
-    unset ($fieldName, $fieldValue);
+    $query = $this->embedWhereConditionsIntoQuery($query, $assocWhereClause, $useSimpleCondition);
 
     $numberOfRows = $query->execute();
 
@@ -182,6 +208,50 @@ class DatabaseManager {
     $numberOfRows = $query->countQuery()->execute()->fetchField(); //This is equivalent of COUNT aggregation function.
 
     return $numberOfRows;
+  }
+
+  /**
+   * Performs validation of associative array with complex WHERE condition. Throws exception if array structure is not correct.
+   * @param array $assocWhereClause
+   * @throws InvalidInputData
+   */
+  protected function validateWhereCondition(array $assocWhereClause) {
+    //Check input data:
+    foreach ($assocWhereClause as $clause) {
+      if (!isset($clause['comparison_value']) || !isset($clause['comparison_op']) || !is_string($clause['comparison_op']) || !in_array($clause['comparison_op'], ['=', '>', '<'])) {
+        throw new InvalidInputData('Improperly filled $assocWhereClause. Each value of this array should be also array with keys \'comparison_value\' and \'comparison_op\'.');
+      }
+    }
+    unset($clause);
+  }
+
+  /**
+   * @param ConditionInterface $query
+   * @param array $assocWhereClause
+   * @param bool $useSimpleCondition
+   * @return ConditionInterface
+   */
+  protected function embedWhereConditionsIntoQuery(ConditionInterface $query, array $assocWhereClause, bool $useSimpleCondition) {
+    //Here we'll add as many conditions as number of values in $assocWhereClause array.
+    switch (TRUE) {
+      case ($useSimpleCondition):
+        foreach ($assocWhereClause as $fieldName => $fieldValue) {
+          $query->condition($this->selectedTable.'.'.$fieldName, $fieldValue, '=');
+        }
+        unset($fieldName, $fieldValue);
+
+        break;
+
+      case (!$useSimpleCondition):
+        foreach ($assocWhereClause as $fieldName => $clause) {
+          $query->condition($this->selectedTable.'.'.$fieldName, $clause['comparison_value'], $clause['comparison_op']);
+        }
+        unset ($fieldName, $clause);
+
+        break;
+    }
+
+    return $query;
   }
 }
 
