@@ -1,7 +1,7 @@
 <?php
 
 function sherlock_d8_schema() {
-  $schema['sherlock_user_input'] = [
+  $schema[SHERLOCK_MAIN_TABLE] = [
     'description' => 'Sherlock main table - saved user input.',
     'fields' => [
       'id' => [
@@ -21,11 +21,13 @@ function sherlock_d8_schema() {
       'created' => [
         'description' => 'Time created in timestamp format.',
         'type' => 'int',
+        'unsigned' => TRUE,
       ],
 
-      'changed' => [
+      'modified' => [
         'description' => 'Time last changed in timestamp format.',
         'type' => 'int',
+        'unsigned' => TRUE,
       ],
 
       'name' => [
@@ -50,18 +52,11 @@ function sherlock_d8_schema() {
         'type' => 'text',
       ],
 
-      'keep_alive_days' => [
-        'description' => 'How long to store user saved search. Usually - 7/30/90/365 days.',
+      'task_id' => [
+        'description' => 'ID of the corresponding task in sherlock_tasklist table.',
         'type' => 'int',
-        'size' => 'small',
         'unsigned' => TRUE,
-      ],
-
-      'delete' => [
-        'description' => 'Should this record be deleted? Possible values - 0/1.',
-        'type' => 'int',
-        'size' => 'tiny',
-        'unsigned' => TRUE,
+        'default' => 0
       ],
     ],
 
@@ -70,6 +65,51 @@ function sherlock_d8_schema() {
       'uid_namehash' => [
         'uid',
         'name_hash',
+      ],
+    ],
+
+    'primary key' => [
+      'id',
+    ],
+  ];
+
+  $schema[SHERLOCK_TASKS_TABLE] = [
+    'description' => 'Table with actual (active) tasks.',
+    'fields' => [
+      'id' => [
+        'description' => 'The primary identifier for task records.',
+        'type' => 'serial', //Because we want this field to be autoincremented.
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+
+      'serialized_task' => [
+        'description' => 'Here we store serialized array with links to check.',
+        'type' => 'text',
+      ],
+
+      'created' => [
+        'description' => 'Time created in timestamp format.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ],
+
+      'modified' => [
+        'description' => 'Time last changed in timestamp format.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ],
+
+      'last_checked' => [
+        'description' => 'Time when URLs was last fetched.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ],
+
+      'active_to' => [
+        'description' => 'Task End Of Life time.',
+        'type' => 'int',
+        'unsigned' => TRUE,
       ],
     ],
 

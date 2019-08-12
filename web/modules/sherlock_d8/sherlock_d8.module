@@ -1,6 +1,11 @@
 <?php
 
+const SHERLOCK_MAIN_TABLE = 'sherlock_user_input'; //Here we will store searches (serialized user-filled forms and their values)
+const SHERLOCK_TASKS_TABLE = 'sherlock_tasklist'; //Table for ACTIVE tasks
+const SHERLOCK_SEARCHNAME_HASH_ALGO = 'md5';
+
 use \Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
+use \Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
 
 function sherlock_d8_theme($existing, $type, $theme, $path) {
   return [
@@ -32,19 +37,39 @@ function sherlock_d8_cron() {
    */
   $logger = \Drupal::logger('sherlock_d8');
 
-  $currentTimestamp = time();
-
+  //Prepare WHERE clause to select expired records from tasks table:
   $whereClause = [
-    0 => [
-      'where_condition' => '(`changed` + `keep_alive_days`*24*60*60) < :current_timestamp',
-      'args' => [':current_timestamp' => $currentTimestamp],
+    'active_to' => [
+      'comparison_value' => time(),
+      'comparison_op' => '<'
     ],
   ];
 
-  $deletedRecords = 0;
+  $deletedTasksCount = 0;
+  $updatedSearchesCount = 0;
 
   try {
-    $deletedRecords = $dbConnection->selectTable('sherlock_user_input')->deleteRecordsExtended($whereClause);
+    $recordsToDelete = $dbConnection->selectTable(SHERLOCK_TASKS_TABLE)->selectRecords($whereClause, 'id', FALSE);
+    $idsToDelete = array_keys($recordsToDelete);
+
+    /**
+     * @var \Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockTaskEntity $savedTaskObject
+     */
+    $savedTaskObject = SherlockEntity::getInstance('TASK', 0, $dbConnection);
+
+    for ($i=0; $i < count($idsToDelete); $i++) {
+      $savedTaskObject->delete($idsToDelete[$i], TRUE);
+
+      if (SherlockEntity::isTaskDeleted()) {
+        $deletedTasksCount++;
+      }
+
+      if (SherlockEntity::isSearchUpdated()) {
+        $updatedSearchesCount++;
+      }
+
+      SherlockEntity::resetFlags();
+    }
   } catch (InvalidInputData $exception) {
     $problemFilePath = $exception->getFile();
     $lineNumber = $exception->getLine();
@@ -55,7 +80,11 @@ function sherlock_d8_cron() {
     unset($problemFilePath, $lineNumber, $description);
   }
 
-  if ($deletedRecords > 0) {
-    $logger->info('Automatically deleted [@num] expired users searches.', ['@num' => $deletedRecords]);
+  if ($deletedTasksCount > 0) {
+    $logger->info('Automatically deleted [@num] expired tasks.', ['@num' => $deletedTasksCount]);
+  }
+
+  if ($deletedTasksCount !== $updatedSearchesCount) {
+    $logger->notice('Consistency check needed: Number of deleted records from [' . SHERLOCK_TASKS_TABLE . '] not equal to number of updated records in [' . SHERLOCK_MAIN_TABLE . '].');
   }
 }

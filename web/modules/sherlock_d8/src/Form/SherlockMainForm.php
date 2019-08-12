@@ -11,6 +11,9 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\ReplaceCommand;
+use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockSearchEntity;
+use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockTaskEntity;
+use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
@@ -29,6 +32,9 @@ class SherlockMainForm extends FormBase {
    * @var \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    */
   protected $moduleHandler;
+
+  //ID of loaded saved search
+  protected $recordID = null;
 
   /**
    * Constructs a new SherlockMainForm object.
@@ -65,7 +71,11 @@ class SherlockMainForm extends FormBase {
       $userAuthenticated = true;
     }
 
+    $userID = $this->currentUser()->id();
+
     $recordID = intval($recordID); //Validate recordID because user can put anything here!
+    $this->recordID = $recordID;
+
     $step = $this->getCurrentStep($form_state);
     $isUserInteractsWithForm = (bool) $form_state->get('does_user_altering_form');
     //------------------------------------------------------------------------------------------------------------------
@@ -102,7 +112,7 @@ class SherlockMainForm extends FormBase {
           $recordsSelectCriterea = [
             'uid' => $this->currentUser()->id(),
           ];
-          $currentUserRecords = $this->dbConnection->selectTable('sherlock_user_input')->setFieldsToGet(['id', 'name'])->selectRecords($recordsSelectCriterea, 'id');
+          $currentUserRecords = $this->dbConnection->selectTable(SHERLOCK_MAIN_TABLE)->selectRecords($recordsSelectCriterea, 'id');
 
           //We also need to rebuild a bit our user records, make it more flat, because now it 2-dimensional:
           foreach ($currentUserRecords as &$record) {
@@ -352,6 +362,32 @@ class SherlockMainForm extends FormBase {
         }
         unset($key, $value);
 
+        //Load saved search record from DB, to pre-populate it's name, checkbox state and expiring time label:
+        /**
+         * @var $savedSearchObject iSherlockSearchEntity
+         */
+        $savedSearchObject = SherlockEntity::getInstance('SEARCH', $userID, $this->dbConnection)->load($recordID);
+        $savedSearchName = '';
+        $linkedTaskID = 0;
+        $subscribeForUpdatesCheckbox = FALSE;
+
+        if ($savedSearchObject) {
+          $savedSearchName = $savedSearchObject->getName();
+          $linkedTaskID = $savedSearchObject->getTaskId();
+          $subscribeForUpdatesCheckbox = boolval($linkedTaskID);
+        }
+
+        //Load task entity record:
+        /**
+         * @var $savedTaskObject iSherlockTaskEntity
+         */
+        $savedTaskObject = SherlockEntity::getInstance('TASK', $userID, $this->dbConnection)->load($linkedTaskID);
+        $activeTo = 'End time not set';
+
+        if ($savedTaskObject) {
+          $activeTo = date('F j, Y', $savedTaskObject->getActiveTo());
+        }
+
         //---------------- Back button ---------------------------------------------------------------------------------
         $form['navigation'] = [
           '#type' => 'container',
@@ -396,6 +432,7 @@ class SherlockMainForm extends FormBase {
             '#title' => $this->t('Enter name for your search'),
             '#required' => TRUE,
             '#maxlength' => 255, //This field defined as VARCHAR(255) in DB.
+            '#default_value' => $savedSearchName,
           ];
 
           $form['save_search_block']['overwrite_existing_search'] = [
@@ -404,11 +441,25 @@ class SherlockMainForm extends FormBase {
             '#default_value' => 0,
           ];
 
-          $form['save_search_block']['storing_period_selector'] = [
+          $form['save_search_block']['subscribe_to_updates'] = [
+            '#type' => 'checkbox',
+            '#title' => $this->t('Check for updates daily and send a report on new offers.'),
+            '#default_value' => $subscribeForUpdatesCheckbox,
+          ];
+
+          $form['save_search_block']['serving_period_selector'] = [
             '#type' => 'select',
             '#options' => [3 => '3 days', 7 => '7 days', 30 => '30 days', 90 => '90 days',],
             '#title' => $this->t('How long to serve your task?'),
             '#default_value' => 7,
+            '#prefix' => '<div class="container-inline">',
+            '#suffix' => '</div>',
+          ];
+
+          $form['save_search_block']['active_to_remark'] = [
+            '#type' => 'item',
+            '#title' => 'This task is active until',
+            '#description' => $activeTo,
             '#prefix' => '<div class="container-inline">',
             '#suffix' => '</div>',
           ];
@@ -426,7 +477,7 @@ class SherlockMainForm extends FormBase {
               '::saveUpdateValidate'
             ],
             '#submit' => [
-              '::saveSubmit',
+              '::saveSubmitHandler',
             ],
           ];
 
@@ -465,7 +516,7 @@ class SherlockMainForm extends FormBase {
   }
 
   /**
-   * This method returns saved form structure and form values from DB (from "sherlock_user_input" table).
+   * This method returns saved form structure and form values from DB (from "SHERLOCK_MAIN_TABLE" table).
    * As data stores in DB in serialized form, this method also unserialize them and returns as array.
    *
    * @param int $recordID
@@ -473,24 +524,23 @@ class SherlockMainForm extends FormBase {
    */
   protected function loadSavedForm(int $recordID) {
     $userID = $this->currentUser()->id();
-    if ($recordID <= 0 || $userID <=0) {return [];}
+    if ($recordID <= 0 || $userID <= 0) {return [];}
 
-    $selectionCriterion = [
-      'id' => $recordID,
-      'uid' => $userID,
-    ];
-
-    //Load record from DB by it recordID AND userId:
-    $savedSearchRaw = $this->dbConnection->selectTable('sherlock_user_input')->setFieldsToGet(['id', 'serialized_form_structure', 'serialized_form_values'])->selectRecords($selectionCriterion, 'id');
-    $savedSearch = array_shift($savedSearchRaw);
-    unset($savedSearchRaw);
+    /**
+     * @var $savedSearchObject iSherlockSearchEntity
+     */
+    $savedSearchObject = SherlockEntity::getInstance('SEARCH', $userID, $this->dbConnection)->load($recordID);
 
     $savedForm = [];
 
-    $savedForm['form_structure'] = unserialize($savedSearch['serialized_form_structure']);
-    $savedForm['form_values'] = unserialize($savedSearch['serialized_form_values']);
+    if ($savedSearchObject) {
+      $savedForm['form_structure'] = $savedSearchObject->getFormStructure();
+      $savedForm['form_values'] = $savedSearchObject->getFormValues();
+    }
 
-    if (empty($savedForm['form_structure']) || empty($savedForm['form_values'])) {return [];}
+    if (empty($savedForm['form_structure']) || empty($savedForm['form_values'])) {
+      return [];
+    }
 
     return $savedForm;
   }
@@ -643,19 +693,12 @@ class SherlockMainForm extends FormBase {
     $currentUserId = $this->currentUser()->id();
 
     if ($recordIdToDelete > 0 && $currentUserId > 0) {
-      $selectionCriterion = [
-        'id' => $recordIdToDelete,
-        'uid' => $currentUserId,
-      ];
+      $searchObject = SherlockEntity::getInstance('SEARCH', $currentUserId, $this->dbConnection);
+      $searchObject->delete($recordIdToDelete);
 
-      //Delete record from DB by it recordId AND userId:
-      $isRecordDeleted = $this->dbConnection->selectTable('sherlock_user_input')->deleteRecords($selectionCriterion);
+      $this->displayNotifications();
+      SherlockEntity::resetFlags();
 
-      if ($isRecordDeleted) {
-        $this->messenger()->addStatus($this->t('Record successfully deleted.'));
-      } else {
-        $this->messenger()->addError($this->t('An unexpected error has occurred. No records have been deleted.'));
-      }
       $form_state->setRebuild(FALSE);
 
     } else {
@@ -863,11 +906,11 @@ class SherlockMainForm extends FormBase {
     $searchName = $form_state->getValue(['save_search_block', 'search_name_textfield']);
     $searchNameSanitized = filter_var($searchName, FILTER_SANITIZE_STRING, FILTER_FLAG_NO_ENCODE_QUOTES);
 
-    $storingPeriod = $form_state->getValue(['save_search_block', 'storing_period_selector']);
+    $storingPeriod = $form_state->getValue(['save_search_block', 'serving_period_selector']);
     $storingPeriodSanitized = intval($storingPeriod);
 
     //Calculate md5 hash of name of the search:
-    $searchNameMD5Hash = hash('md5', $searchName);
+    $searchNameMD5Hash = hash(SHERLOCK_SEARCHNAME_HASH_ALGO, $searchName);
 
     $dataToCheck = [
       'uid' => $this->currentUser()->id(),
@@ -879,78 +922,50 @@ class SherlockMainForm extends FormBase {
     }
 
     if ($storingPeriodSanitized > 90) {
-      $form_state->setErrorByName('save_search_block][storing_period_selector', $this->t('Select how many days your search will be served.'));
+      $form_state->setErrorByName('save_search_block][serving_period_selector', $this->t('Select how many days your search will be served.'));
     }
 
     //If checkbox "Overwrite existing search" is UNCHECKED && If data with given user ID and name already exists:
-    if (!$overwriteExisting && $this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($dataToCheck)) {
+    if (!$overwriteExisting && $this->dbConnection->selectTable(SHERLOCK_MAIN_TABLE)->checkIfRecordExists($dataToCheck)) {
       $form_state->setErrorByName('save_search_block][search_name_textfield', $this->t('This name is already taken, we can\'t save new search with the same name. But you can overwrite existing search with new data.'));
     }
   }
 
-  public function saveSubmit(array &$form, FormStateInterface $form_state) {
+  public function saveSubmitHandler(array &$form, FormStateInterface $form_state) {
     $triggeringElement = $form_state->getTriggeringElement();
     $pressedBtnName = $triggeringElement['#name'] ?? '';
     if ($pressedBtnName != 'btn_savesearch') {return;}
 
-    $overwriteExisting = intval($form_state->getValue(['save_search_block', 'overwrite_existing_search']));
+    $searchEntity = SherlockEntity::getInstance('SEARCH', $this->currentUser()->id(), $this->dbConnection);
+    $searchEntity->fillObjectWithFormData($form_state);
+    $searchEntity->save();
 
-    //Get structure of user-configured block with keywords (this is only structure, values we'll get in next step...):
-    $userAdded = $form_state->get('user_added');
+    $this->displayNotifications();
+  }
 
-    //Get values (not only of user-configured block with keywords but of whole form):
-    $formStateValuesSnapshot = $form_state->get(['form_state_values_snapshot']);
-
-    //Get user-given name for search:
-    $searchName = $form_state->getValue(['save_search_block', 'search_name_textfield']);
-
-    //Calculate md5 hash of name of the search:
-    $searchNameMD5Hash = hash('md5', $searchName);
-
-    //Get serving time:
-    $storingPeriod = $form_state->getValue(['save_search_block', 'storing_period_selector']);
-    $storingPeriodSanitized = intval($storingPeriod);
-
-    $condition = [
-      'uid' => $this->currentUser()->id(),
-      'name_hash' => $searchNameMD5Hash,
-    ];
-
-    $doesRecordExist = $this->dbConnection->selectTable('sherlock_user_input')->checkIfRecordExists($condition);
-
-    $newData = [
-      //'uid' => $this->currentUser()->id(),
-      //'created' => time(),
-      'changed' => time(),
-      //'name' => $searchName,
-      //'name_hash' => $searchNameMD5Hash,
-      'serialized_form_structure' => serialize($userAdded),
-      'serialized_form_values' => serialize($formStateValuesSnapshot),
-      'keep_alive_days' => $storingPeriodSanitized,
-      'delete' => 0,
-    ];
-
-    //If this is new insertion, NOT an update of existing, let's add some info:
-    if (!$doesRecordExist) {
-      $newData['uid'] = $this->currentUser()->id();
-      $newData['created'] = time();
-      $newData['name'] = $searchName;
-      $newData['name_hash'] = $searchNameMD5Hash;
+  public function displayNotifications() {
+    if (SherlockEntity::isSearchCreated()) {
+      $this->messenger()->addStatus($this->t('Search settings and parameters have been successfully saved.'));
     }
 
-    //If record exists and SHOULD be overwriten -> we do UPDATE method:
-    if ($doesRecordExist && $overwriteExisting) {
-      if ($this->dbConnection->setData($newData)->selectTable('sherlock_user_input')->updateRecords($condition)) {
-        $this->messenger()->addStatus($this->t('Existing search has been successfully updated.'));
-      }
+    if (SherlockEntity::isSearchUpdated()) {
+      $this->messenger()->addStatus($this->t('Existing search has been successfully updated.'));
     }
-    //If record does not exist, just insert new record, ignoring value of checkbox (INSERT method):
-    elseif (!$doesRecordExist) {
-      if ($this->dbConnection->setData($newData)->selectTable('sherlock_user_input')->insertRecord()) {
-        $this->messenger()->addStatus($this->t('Search settings and parameters have been successfully saved.'));
-      }
-    } else {
-      $this->messenger()->addError($this->t('An unexpected error has occurred on saving.'));
+
+    if (SherlockEntity::isSearchDeleted()) {
+      $this->messenger()->addStatus($this->t('Search has been successfully deleted.'));
+    }
+
+    if (SherlockEntity::isTaskCreated()) {
+      $this->messenger()->addStatus($this->t('New task has been successfully added to schedule.'));
+    }
+
+    if (SherlockEntity::isTaskUpdated()) {
+      $this->messenger()->addStatus($this->t('Existing task has been successfully updated.'));
+    }
+
+    if (SherlockEntity::isTaskDeleted()) {
+      $this->messenger()->addStatus($this->t('Scheduled task has been successfully deleted.'));
     }
   }
 
