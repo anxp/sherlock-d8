@@ -13,7 +13,7 @@ use Drupal\Core\Form\FormStateInterface;
 class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
   //These variables represent fields in SHERLOCK_TASKS_TABLE:
   protected $id = 0;
-  protected $task_essence = '';
+  protected $task_essence = [];
   protected $created = 0;
   protected $modified = 0;
   protected $last_checked = 0;
@@ -22,35 +22,40 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
   public function fillObjectWithFormData(FormStateInterface $form_state): void {
     self::initializeSharedVariables($form_state);
 
-    $this->task_essence = $form_state->get(['sherlock_tmp_storage', 'constructed_urls_collection']);
+    $this->task_essence = $form_state->get(['sherlock_tmp_storage']);
 
     $servingPeriod = intval($form_state->getValue(['save_search_block', 'serving_period_selector'])); //Number of DAYS
     $this->active_to = time() + $servingPeriod * 24 * 60 * 60;
   }
 
   public function save(): int {
-    $name = self::$shared_form_state->getValue(['save_search_block', 'search_name_textfield']);
-    $nameHash = hash(SHERLOCK_SEARCHNAME_HASH_ALGO, $name);
+    if ($this->id === 0) {
+      $name = self::$shared_form_state->getValue(['save_search_block', 'search_name_textfield']);
+      $nameHash = hash(SHERLOCK_SEARCHNAME_HASH_ALGO, $name);
 
-    $condition = [
-      'uid' => self::$uid,
-      'name_hash' => $nameHash,
-    ];
+      $condition = [
+        'uid' => self::$uid,
+        'name_hash' => $nameHash,
+      ];
 
-    $loadAttempt = self::$dbConnection->selectTable(SHERLOCK_MAIN_TABLE)->selectRecords($condition, 'id', TRUE);
-    $taskID = !empty($loadAttempt) ? array_shift($loadAttempt)['task_id'] : 0;
+      $loadAttempt = self::$dbConnection->selectTable(SHERLOCK_MAIN_TABLE)->selectRecords($condition, 'id', TRUE);
+      $this->id = !empty($loadAttempt) ? array_shift($loadAttempt)['task_id'] : 0;
 
-    $doesTaskExist = self::$dbConnection->selectTable(SHERLOCK_TASKS_TABLE)->checkIfRecordExists(['id' => $taskID]);
+      unset($loadAttempt);
+    }
 
-    $taskID = $doesTaskExist ? $taskID : 0;
-
-    unset($loadAttempt);
+    $doesTaskExist = self::$dbConnection->selectTable(SHERLOCK_TASKS_TABLE)->checkIfRecordExists(['id' => $this->id]);
 
     $newData = [
       'serialized_task' => serialize($this->task_essence),
       'modified' => time(),
       'active_to' => $this->active_to,
     ];
+
+    //Update last_checked field in DB only if it has been explicitly set by setLastChecked(), FOR EXISTING TASK ONLY:
+    if ($this->last_checked !== 0) {
+      $newData['last_checked'] = $this->last_checked;
+    }
 
     //If this is new insertion, NOT an update of existing, let's add some info:
     if (!$doesTaskExist) {
@@ -60,10 +65,10 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
 
     switch ($doesTaskExist) {
       case (TRUE):
-        if (self::$dbConnection->setData($newData)->selectTable(SHERLOCK_TASKS_TABLE)->updateRecords(['id' => $taskID])) {
+        if (self::$dbConnection->setData($newData)->selectTable(SHERLOCK_TASKS_TABLE)->updateRecords(['id' => $this->id])) {
           self::$taskUpdated = TRUE;
         } else {
-          $taskID = 0;
+          $this->id = 0;
         }
         break;
 
@@ -72,19 +77,19 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
         if ($newTaskID) {
           if (self::$dbConnection->setData(['task_id' => $newTaskID])->selectTable(SHERLOCK_MAIN_TABLE)->updateRecords($condition)) {
             self::$taskCreated = TRUE;
-            $taskID = $newTaskID;
+            $this->id = $newTaskID;
           }
         }
         break;
     }
 
     //Initialize some object properties, if save has been successfull:
-    if ($taskID) {
-      $this->id = $taskID;
+    //TODO: Maybe remove "modified" field from tasks table as not used?
+    if ($this->id) {
       $this->modified = time();
     }
 
-    return $taskID;
+    return $this->id;
   }
 
   //Delete task if it exists:
@@ -168,7 +173,7 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
   /**
    * @return string
    */
-  public function getTaskEssence(): string {
+  public function getTaskEssence(): array {
     return $this->task_essence;
   }
 
@@ -198,5 +203,12 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
    */
   public function getActiveTo(): int {
     return $this->active_to;
+  }
+
+  /**
+   * @param int $last_checked
+   */
+  public function setLastChecked(int $last_checked): void {
+    $this->last_checked = $last_checked;
   }
 }
