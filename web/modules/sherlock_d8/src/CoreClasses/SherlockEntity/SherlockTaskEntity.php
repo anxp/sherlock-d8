@@ -15,7 +15,6 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
   protected $id = 0;
   protected $task_essence = [];
   protected $created = 0;
-  protected $modified = 0;
   protected $last_checked = 0;
   protected $active_to = 0;
 
@@ -48,11 +47,11 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
 
     $newData = [
       'serialized_task' => serialize($this->task_essence),
-      'modified' => time(),
       'active_to' => $this->active_to,
     ];
 
-    //Update last_checked field in DB only if it has been explicitly set by setLastChecked(), FOR EXISTING TASK ONLY:
+    //Update last_checked field in DB, only if it has been explicitly set by setLastChecked(), FOR EXISTING TASK ONLY
+    //(for new tasks it will be overwritten with current time in a few lines below):
     if ($this->last_checked !== 0) {
       $newData['last_checked'] = $this->last_checked;
     }
@@ -81,12 +80,6 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
           }
         }
         break;
-    }
-
-    //Initialize some object properties, if save has been successfull:
-    //TODO: Maybe remove "modified" field from tasks table as not used?
-    if ($this->id) {
-      $this->modified = time();
     }
 
     return $this->id;
@@ -156,7 +149,6 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
     $this->id = intval($requestedTask['id']);
     $this->task_essence = unserialize($requestedTask['serialized_task']);
     $this->created = intval($requestedTask['created']);
-    $this->modified = intval($requestedTask['modified']);
     $this->last_checked = intval($requestedTask['last_checked']);
     $this->active_to = intval($requestedTask['active_to']);
 
@@ -182,13 +174,6 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
    */
   public function getCreated(): int {
     return $this->created;
-  }
-
-  /**
-   * @return int
-   */
-  public function getModified(): int {
-    return $this->modified;
   }
 
   /**
