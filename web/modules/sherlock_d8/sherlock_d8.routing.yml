@@ -10,7 +10,7 @@ sherlock_d8.mainform:
 sherlock_d8.market_fetch_controller:
   path: 'sherlock/market-fetch'
   defaults:
-    _controller: '\Drupal\sherlock_d8\Controller\MarketFetchController::fetchMarkets'
+    _controller: '\Drupal\sherlock_d8\Controller\MarketFetchController::fetchGivenMarket'
     _title: 'Ajax Market Fetch'
   requirements:
     _permission: 'access content'
