@@ -46,6 +46,11 @@ class DatabaseManager {
     return $this;
   }
 
+  public function query(string $queryString, array $args = [], array $options = []) {
+    $result = $this->dbConnection->query($queryString, $args, $options);
+    return $result;
+  }
+
   /**
    * This method is for selecting records in DB table by specified criterion ($assocWhereClause).
    * Result will be an array, keyed with values from table field/column, specified in $keyResultBy parameter ($keyResultBy is just a string with name of column),
