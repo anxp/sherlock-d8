@@ -2,10 +2,12 @@
 
 const SHERLOCK_MAIN_TABLE = 'sherlock_user_input'; //Here we will store searches (serialized user-filled forms and their values)
 const SHERLOCK_TASKS_TABLE = 'sherlock_tasklist'; //Table for ACTIVE tasks
+const SHERLOCK_RESULTS_TABLE = 'sherlock_results'; //Table for results. We will store only actual results here, deleting links to disappeared from fleamarket items.
 const SHERLOCK_SEARCHNAME_HASH_ALGO = 'md5';
 
 use \Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 use \Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
+use Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity;
 
 function sherlock_d8_theme($existing, $type, $theme, $path) {
   return [
@@ -23,6 +25,8 @@ function sherlock_d8_theme($existing, $type, $theme, $path) {
   ];
 }
 
+//TODO: Maybe move all functionality from hook_cron to TaskManager class and call methods form it here?
+//TODO; Or, add some methods to SherlockTaskEntity class to be able to clean up expired tasks.
 /**
  * Implements hook_cron().
  */
@@ -37,6 +41,7 @@ function sherlock_d8_cron() {
    */
   $logger = \Drupal::logger('sherlock_d8');
 
+  //===================== FIRST STEP: REMOVE EXPIRED TASKS =============================================================
   //Prepare WHERE clause to select expired records from tasks table:
   $whereClause = [
     'active_to' => [
@@ -58,6 +63,10 @@ function sherlock_d8_cron() {
     $savedTaskObject = SherlockEntity::getInstance('TASK', 0, $dbConnection);
 
     for ($i=0; $i < count($idsToDelete); $i++) {
+      //Delete RESULTS for current task:
+      SherlockTrouvailleEntity::deleteByTaskID($idsToDelete[$i]);
+
+      //Delete current task itself:
       $savedTaskObject->delete($idsToDelete[$i], TRUE);
 
       if (SherlockEntity::isTaskDeleted()) {
@@ -86,5 +95,20 @@ function sherlock_d8_cron() {
 
   if ($deletedTasksCount !== $updatedSearchesCount) {
     $logger->notice('Consistency check needed: Number of deleted records from [' . SHERLOCK_TASKS_TABLE . '] not equal to number of updated records in [' . SHERLOCK_MAIN_TABLE . '].');
+  }
+
+  //===================== SECOND STEP: ADD ACTUAL TASKS TO QUEUE (if they was not processed during last 24h) ===========
+  $queue = \Drupal::queue('pending_user_requests');
+  $dbc = \Drupal::database();
+
+  $getTasksQuery = $dbc->select(SHERLOCK_TASKS_TABLE, 'tt');
+  $getTasksQuery->join(SHERLOCK_MAIN_TABLE, 'mt', 'tt.id = mt.task_id');
+  $getTasksQuery->addField('tt', 'id', 'task_id');
+  $getTasksQuery->addField('mt', 'uid', 'user_id');
+  $getTasksQuery->condition('tt.last_checked', time() - 24*60*60, '<');
+  $result = $getTasksQuery->execute();
+
+  foreach ($result as $record) {
+    $queue->createItem(['user_id' => $record->user_id, 'task_id' => $record->task_id]);
   }
 }

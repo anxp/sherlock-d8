@@ -2,3 +2,6 @@ services:
   sherlock_d8.database_manager:
     class: Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager
     arguments: ['@database']
+
+  sherlock_d8.market_fetch_controller:
+    class: Drupal\sherlock_d8\Controller\MarketFetchController

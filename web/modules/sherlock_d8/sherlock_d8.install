@@ -94,12 +94,6 @@ function sherlock_d8_schema() {
         'unsigned' => TRUE,
       ],
 
-      'modified' => [
-        'description' => 'Time last changed in timestamp format.',
-        'type' => 'int',
-        'unsigned' => TRUE,
-      ],
-
       'last_checked' => [
         'description' => 'Time when URLs was last fetched.',
         'type' => 'int',
@@ -112,6 +106,95 @@ function sherlock_d8_schema() {
         'unsigned' => TRUE,
       ],
     ],
+
+    'primary key' => [
+      'id',
+    ],
+  ];
+
+  $schema[SHERLOCK_RESULTS_TABLE] = [
+    'description' => 'Table for storing results.',
+    'fields' => [
+      'id' => [
+        'description' => 'The primary identifier for result records.',
+        'type' => 'serial', //Because we want this field to be autoincremented.
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+
+      'uid' => [
+        'description' => 'User, this result belongs to.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+
+      'task_id' => [
+        'description' => 'ID of the corresponding task in sherlock_tasklist table.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+
+      'is_new' => [
+        'description' => 'Shows is this result new (appeared recently) or not.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 1,
+      ],
+
+      'fmkt_id' => [
+        'description' => 'Fleamarket ID, to which result belongs.',
+        'type' => 'char',
+        'length' => 3,
+        'not null' => TRUE,
+      ],
+
+      'item_title' => [
+        'description' => 'Found item title.',
+        'type' => 'text',
+      ],
+
+      'item_url' => [
+        'description' => 'Found item URL.',
+        'type' => 'text',
+      ],
+
+      'item_price' => [
+        'description' => 'Found item price. Only value, without currency symbol.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ],
+
+      'item_currency' => [
+        'description' => 'Item currency. 3-letters ID.',
+        'type' => 'char',
+        'length' => 3,
+      ],
+
+      'item_img' => [
+        'description' => 'Path to item thumbnail.',
+        'type' => 'text',
+      ],
+
+      'url_hash' => [
+        'description' => 'URL hash.',
+        'type' => 'char',
+        'length' => 32,
+        'default' => 'just_a_32_symbols_placeholder_ju',
+      ],
+
+      'url_price_hash' => [
+        'description' => 'URL+Price hash.',
+        'type' => 'char',
+        'length' => 32,
+        'default' => 'just_a_32_symbols_placeholder_ju',
+      ],
+    ],
+
+    //TODO: Maybe add indexes on task_id, user_id, url_hash, url_price_hash but only after slow query measurements.
 
     'primary key' => [
       'id',
