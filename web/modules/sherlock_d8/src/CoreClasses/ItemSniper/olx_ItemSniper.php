@@ -45,7 +45,7 @@ class olx_ItemSniper extends ItemSniper {
     $itemPrice = [];
     $itemPrice['price_value'] = (string) preg_replace('/\D/', '', $itemPriceRaw); //Filter out ANYTHING THAT NOT a digit.
     $itemPriceRawNoSpaces = (string) preg_replace('/\s/', '', $itemPriceRaw);
-    $itemPrice['price_currency'] = (string) preg_replace('/(\d+)([^0-9]+)(\.)?$/', '$2', $itemPriceRawNoSpaces); //Filter out digits, leave only currency ID.
+    $itemPrice['price_currency'] = (string) preg_replace('/(\d+)([^0-9|\.]+)(\.)?$/', '$2', $itemPriceRawNoSpaces); //Filter out digits, leave only currency ID.
     return $itemPrice;
   }
 
