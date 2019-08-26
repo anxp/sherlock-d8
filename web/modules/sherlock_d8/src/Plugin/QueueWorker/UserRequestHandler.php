@@ -91,7 +91,9 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
     $priceFrom = $taskEssence['price_from'];
     $priceTo = $taskEssence['price_to'];
 
-    $resultsForCurrentTask = []; //Finally, we will got here ONLY NEW results (all old results, which are already in DB will be filtered out).
+    $currentTask_ACTUAL_results = [];
+    $currentTask_NEW_results = [];
+
     $url_Hashpool = [];
     $urlprice_Hashpool = [];
     $hashesOfAlreadyExistingRecords = array_keys(SherlockTrouvailleEntity::getRecordsForSpecifiedTask($taskID, 'url_price_hash'));
@@ -100,7 +102,8 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
       //Request and get results from remote resources:
       $currentMarketResults = $this->marketFetchController->fetchMarketCore($marketID, $urlsSetForGivenMarket, $priceFrom, $priceTo);
 
-      //Check and filter gotten results. If record already exists in DB, delete it from gotten results array -> so we will insert only NEW results in DB:
+      //Check and filter gotten results. We'll split results into 2 arrays -
+      //$currentTask_ACTUAL_results (all results gotten from remote) and $currentTask_NEW_results (results, which are not exist in our DB):
       foreach ($currentMarketResults as $numericKey => &$oneResult) {
         //Store result hashes in separate arrays:
         $urlHash = hash(SHERLOCK_SEARCHNAME_HASH_ALGO, $oneResult['link']);
@@ -109,35 +112,34 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
         $url_Hashpool[] = $urlHash;
         $urlprice_Hashpool[] = $urlPriceHash;
 
-        if (in_array($urlPriceHash, $hashesOfAlreadyExistingRecords)) { //Remove item from array if it already exists in DB!
-          unset($currentMarketResults[$numericKey]);
-        } else { //If item is not in array, we consider this is NEW item (old item with changed price also considered as new),
-                 //so let's upgrade it with new info (add hashes, because we need hashes to properly insert in table):
-          $oneResult['url_hash'] = $urlHash;
-          $oneResult['url_price_hash'] = $urlPriceHash;
+        //These elements with hashes didn't exist before, we add them here dynamically:
+        $oneResult['url_hash'] = $urlHash;
+        $oneResult['url_price_hash'] = $urlPriceHash;
+
+        if(!in_array($urlPriceHash, $hashesOfAlreadyExistingRecords)) {
+          //We've caught NEW item! Let's store it in array for new items only:
+          $currentTask_NEW_results[$marketID][] = $oneResult;
         }
       }
       unset($numericKey, $oneResult);
 
-      //Reindex currentMarketResults array:
-      $currentMarketResults = array_values($currentMarketResults);
-
-      $resultsForCurrentTask[$marketID] = $currentMarketResults;
+      $currentTask_ACTUAL_results[$marketID] = $currentMarketResults;
     }
     unset($marketID, $urlsSetForGivenMarket);
 
-    //------------- Now it's time to write new search results to DB. We will do this in 3 steps: -----------------------
-
-    //1st, we need to check already existing records in DB, and DELETE records, which are NOT IN $resultsForCurrentTask:
+    //Actualize data in our DB: check already existing records, and DELETE records, which are NOT IN $currentTask_ACTUAL_results:
     if (!empty($urlprice_Hashpool)) {
       SherlockTrouvailleEntity::deleteUnmatched($taskID, 'url_price_hash', $urlprice_Hashpool);
     }
 
-    //2nd, select all records with current taskID (already existing in DB at the moment) and set them IS_NEW flag to 0/FALSE:
+    //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* HERE IS PERFECT MOMENT TO SEND EMAIL -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+    //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+
+    //Select all records with current taskID (already existing in DB at the moment) and set them IS_NEW flag to 0/FALSE:
     SherlockTrouvailleEntity::markAsNotNew($taskID);
 
     //FINALLY, insert new records:
-    $rowsInsertedNum = SherlockTrouvailleEntity::insertMultiple($userID, $taskID, $resultsForCurrentTask);
+    $rowsInsertedNum = SherlockTrouvailleEntity::insertMultiple($userID, $taskID, $currentTask_NEW_results);
 
     //------------- New search results for current task are now in DB! -------------------------------------------------
 
