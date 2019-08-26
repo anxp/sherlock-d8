@@ -152,31 +152,39 @@ function sherlock_d8_schema() {
         'not null' => TRUE,
       ],
 
-      'item_title' => [
+      'title' => [
         'description' => 'Found item title.',
         'type' => 'text',
       ],
 
-      'item_url' => [
+      'url' => [
         'description' => 'Found item URL.',
         'type' => 'text',
       ],
 
-      'item_price' => [
+      'price' => [
         'description' => 'Found item price. Only value, without currency symbol.',
         'type' => 'int',
         'unsigned' => TRUE,
       ],
 
-      'item_currency' => [
+      'currency' => [
         'description' => 'Item currency. 3-letters ID.',
         'type' => 'char',
         'length' => 3,
       ],
 
-      'item_img' => [
+      'img_url' => [
         'description' => 'Path to item thumbnail.',
         'type' => 'text',
+      ],
+
+      'img_id' => [
+        'description' => 'ID of thumbnail image. This ID === fid in file_managed Drupal standard table.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
       ],
 
       'url_hash' => [

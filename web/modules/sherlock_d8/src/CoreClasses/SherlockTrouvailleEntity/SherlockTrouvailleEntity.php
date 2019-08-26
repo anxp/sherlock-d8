@@ -109,26 +109,29 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
     foreach ($dataToInsert as $marketID => $marketResults) {
       $marketResultsCount = count($marketResults);
       for ($i = 0; $i < $marketResultsCount; $i++) {
-        $insertQuery[$n] = '(:uid'.$n.', :task_id'.$n.', :fmkt_id'.$n.', :item_title'.$n.', :item_url'.$n.', :item_price'.$n.', :item_currency'.$n.', :item_img'.$n.', :url_hash'.$n.', :url_price_hash'.$n.')';
+        $insertQuery[$n] = '(:uid'.$n.', :task_id'.$n.', :fmkt_id'.$n.', :title'.$n.', :url'.$n.', :price'.$n.', :currency'.$n.', :img_url'.$n.', :img_id'.$n.', :url_hash'.$n.', :url_price_hash'.$n.')';
 
         $insertData[$n][':uid'.$n] = $userID;
         $insertData[$n][':task_id'.$n] = $taskID;
         $insertData[$n][':fmkt_id'.$n] = $marketID;
 
         //TODO: Validate if title is not empty, or throw exception:
-        $insertData[$n][':item_title'.$n] = $marketResults[$i]['title'];
+        $insertData[$n][':title'.$n] = $marketResults[$i]['title'];
 
         //TODO: Validate if this is URL, or throw exception:
-        $insertData[$n][':item_url'.$n] = $marketResults[$i]['link'];
+        $insertData[$n][':url'.$n] = $marketResults[$i]['link'];
 
         //TODO: Validate if this is numeric value, or throw exception:
-        $insertData[$n][':item_price'.$n] = $marketResults[$i]['price_value'];
+        $insertData[$n][':price'.$n] = $marketResults[$i]['price_value'];
 
         //TODO: Validate if currency contain 3 letters (throw exception if needed), take first 3 letters anyway:
-        $insertData[$n][':item_currency'.$n] = $marketResults[$i]['price_currency'];
+        $insertData[$n][':currency'.$n] = $marketResults[$i]['price_currency'];
 
         //TODO: Validate if this is URL, or throw exception:
-        $insertData[$n][':item_img'.$n] = $marketResults[$i]['thumbnail'];
+        $insertData[$n][':img_url'.$n] = $marketResults[$i]['thumbnail'];
+
+        //TODO: ADD THIS FUNCTIONALITY:
+        //$insertData[$n][':img_id'.$n] = 0;
 
         //TODO: Validate if hashes contain 32 symbols, or throw exception:
         $insertData[$n][':url_hash'.$n] = $marketResults[$i]['url_hash'];
@@ -150,7 +153,7 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
       $numberOfChunks = count($insertQueryChunked);
 
       for ($i = 0; $i < $numberOfChunks; $i++) {
-        $insertQueryCurrentIteration = 'INSERT INTO {' . SHERLOCK_RESULTS_TABLE . '} (uid, task_id, fmkt_id, item_title, item_url, item_price, item_currency, item_img, url_hash, url_price_hash) VALUES ';
+        $insertQueryCurrentIteration = 'INSERT INTO {' . SHERLOCK_RESULTS_TABLE . '} (uid, task_id, fmkt_id, title, url, price, currency, img_url, img_id, url_hash, url_price_hash) VALUES ';
 
         $insertQueryCurrentIteration .= implode(', ', $insertQueryChunked[$i]);
         $insertQueryCurrentIteration .= ';';
