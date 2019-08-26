@@ -131,7 +131,7 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
         $insertData[$n][':img_url'.$n] = $marketResults[$i]['thumbnail'];
 
         //TODO: ADD THIS FUNCTIONALITY:
-        //$insertData[$n][':img_id'.$n] = 0;
+        $insertData[$n][':img_id'.$n] = 0;
 
         //TODO: Validate if hashes contain 32 symbols, or throw exception:
         $insertData[$n][':url_hash'.$n] = $marketResults[$i]['url_hash'];
