@@ -123,6 +123,6 @@ abstract class SherlockEntity implements iSherlockEntity {
 
   abstract public function fillObjectWithFormData(FormStateInterface $form_state): void ;
   abstract public function save(): int;
-  abstract public function load(int $recordID, bool $ignoreOwnership = FALSE): ?iSherlockEntity;
+  abstract public function load(int $recordID, bool $ignoreOwnership = FALSE);
   abstract public function delete(int $recordID, bool $ignoreOwnership = FALSE): bool;
 }

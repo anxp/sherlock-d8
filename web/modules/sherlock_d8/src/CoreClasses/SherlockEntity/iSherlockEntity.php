@@ -15,5 +15,11 @@ interface iSherlockEntity {
   public function fillObjectWithFormData(FormStateInterface $form_state): void ;
   public function save(): int;
   public function delete(int $searchID, bool $ignoreOwnership = FALSE): bool;
-  public function load(int $searchID, bool $ignoreOwnership = FALSE): ?self;
+
+  /**
+   * @param int $searchID
+   * @param bool $ignoreOwnership
+   * @return iSherlockSearchEntity | iSherlockTaskEntity
+   */
+  public function load(int $searchID, bool $ignoreOwnership = FALSE);
 }

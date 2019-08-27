@@ -115,7 +115,7 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
     return FALSE;
   }
 
-  public function load(int $taskID, bool $ignoreOwnership = FALSE): ?iSherlockEntity {
+  public function load(int $taskID, bool $ignoreOwnership = FALSE): ?iSherlockTaskEntity {
     self::resetFlags();
 
     $condition['task_id'] = $taskID;

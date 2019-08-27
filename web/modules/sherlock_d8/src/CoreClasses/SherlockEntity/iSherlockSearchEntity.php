@@ -17,4 +17,6 @@ interface iSherlockSearchEntity extends iSherlockEntity {
   public function getFormStructure(): array;
   public function getFormValues(): array;
   public function getTaskId(): int;
+  public function load(int $searchID, bool $ignoreOwnership = FALSE): ?iSherlockSearchEntity;
+  public function loadByTaskID(int $taskID, bool $ignoreOwnership = FALSE): ?iSherlockSearchEntity;
 }

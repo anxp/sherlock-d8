@@ -15,4 +15,5 @@ interface iSherlockTaskEntity extends iSherlockEntity {
   public function getLastChecked(): int;
   public function getActiveTo(): int;
   public function setLastChecked(int $timestamp);
+  public function load(int $taskID, bool $ignoreOwnership = FALSE): ?iSherlockTaskEntity;
 }

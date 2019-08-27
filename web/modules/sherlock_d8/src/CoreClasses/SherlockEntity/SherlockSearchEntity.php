@@ -151,14 +151,8 @@ class SherlockSearchEntity extends SherlockEntity implements iSherlockSearchEnti
     return (bool) $numRowsDeleted;
   }
 
-  public function load(int $searchID, bool $ignoreOwnership = FALSE): ?iSherlockEntity {
+  protected function coreLoad(array $condition): ?iSherlockSearchEntity {
     self::resetFlags();
-
-    $condition['id'] = $searchID;
-
-    if ($ignoreOwnership === FALSE) {
-      $condition['uid'] = self::$uid;
-    }
 
     $loadAttempt = self::$dbConnection->selectTable(SHERLOCK_MAIN_TABLE)->selectRecords($condition, 'id', TRUE);
     if (count($loadAttempt) > 1 || empty($loadAttempt)) {
@@ -183,6 +177,34 @@ class SherlockSearchEntity extends SherlockEntity implements iSherlockSearchEnti
     $this->task_id = intval($requestedSearch['task_id']);
 
     return $this;
+  }
+
+  public function load(int $searchID, bool $ignoreOwnership = FALSE): ?iSherlockSearchEntity {
+    if ($searchID <= 0) {
+      return null;
+    }
+
+    $condition['id'] = $searchID;
+
+    if ($ignoreOwnership === FALSE) {
+      $condition['uid'] = self::$uid;
+    }
+
+    return $this->coreLoad($condition);
+  }
+
+  public function loadByTaskID(int $taskID, bool $ignoreOwnership = FALSE): ?iSherlockSearchEntity {
+    if ($taskID <= 0) {
+      return null;
+    }
+
+    $condition['task_id'] = $taskID;
+
+    if ($ignoreOwnership === FALSE) {
+      $condition['uid'] = self::$uid;
+    }
+
+    return $this->coreLoad($condition);
   }
 
   /**
