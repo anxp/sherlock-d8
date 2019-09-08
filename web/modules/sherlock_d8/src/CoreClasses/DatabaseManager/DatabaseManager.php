@@ -223,7 +223,7 @@ class DatabaseManager {
   protected function validateWhereCondition(array $assocWhereClause) {
     //Check input data:
     foreach ($assocWhereClause as $clause) {
-      if (!isset($clause['comparison_value']) || !isset($clause['comparison_op']) || !is_string($clause['comparison_op']) || !in_array($clause['comparison_op'], ['=', '>', '<', 'IN', 'NOT IN'])) {
+      if (!isset($clause['comparison_value']) || !isset($clause['comparison_op']) || !is_string($clause['comparison_op']) || !in_array($clause['comparison_op'], ['=', '>', '<', '<=', '>=', 'IN', 'NOT IN'])) {
         throw new InvalidInputData('Improperly filled $assocWhereClause. Each value of this array should be also array with keys \'comparison_value\' and \'comparison_op\'.');
       }
     }
