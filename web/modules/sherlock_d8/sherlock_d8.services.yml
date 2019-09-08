@@ -5,3 +5,7 @@ services:
 
   sherlock_d8.market_fetch_controller:
     class: Drupal\sherlock_d8\Controller\MarketFetchController
+
+  sherlock_d8.mailer:
+    class: Drupal\sherlock_d8\CoreClasses\SherlockMailer\SherlockMailer
+    arguments: ['@plugin.manager.mail', '@renderer']
