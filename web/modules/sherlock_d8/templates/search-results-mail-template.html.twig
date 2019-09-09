@@ -1,0 +1,61 @@
+{# https://drupal.stackexchange.com/questions/192498/how-do-i-translate-strings-in-twig-templates #}
+{# Available variables:
+  user_name
+  markets_list
+  number_of_new
+  number_of_all
+  search_name
+  new_results
+  all_results
+  this_is_last_message
+#}
+
+<p>Hello, {{ user_name }}! You received this email because you subscribed to receive updates on your search <strong>"{{ search_name }}"</strong>.</p>
+
+{% if this_is_last_message == true %}
+  <p><i>Please note, this is the last message in your current subscription. If you are still interested in tracking results of your saved search, please renew subscription by visiting sherlock-ua.bid/fm-scan.</i></p>
+{% endif %}
+
+<p>
+  We just checked the flea markets you are interested in:
+  {% for name, results in all_results %}
+    <b>{{ name }}</b>,
+  {% endfor %}
+  and that’s what we managed to find:
+</p>
+
+<h3>New results ({{ number_of_new }}):</h3>
+
+<ul style="list-style: none;">
+  {% for name, result_set in new_results %}
+    <li><h2>{{ name }}:</h2>
+      <table border="1" cellspacing="0" cellpadding="5">
+        {% for result in result_set %}
+        <tr>
+          <td>
+            <a href="{{ result.link }}"><img src="{{ result.thumbnail }}" width="80" alt="{{ result.title }}"></a>
+          </td>
+          <td valign="top">
+            <h4><a href="{{ result.link }}">{{ result.title }}</a></h4>
+            <p>{{ result.price_value }} {{ result.price_currency }}</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    </li>
+  {% endfor %}
+</ul>
+
+<h3>All results ({{ number_of_all }}):</h3>
+<ul style="list-style: none;">
+  {% for name, result_set in all_results %}
+    <li><h2>{{ name }}:</h2>
+      <ul>
+        {% for result in result_set %}
+          <li><a href="{{ result.link }}">{{ result.title }}</a>, {{ result.price_value }} {{ result.price_currency }}</li>
+        {% endfor %}
+      </ul>
+    </li>
+  {% endfor %}
+</ul>
+

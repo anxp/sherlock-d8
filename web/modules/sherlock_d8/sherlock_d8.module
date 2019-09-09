@@ -5,8 +5,8 @@ const SHERLOCK_TASKS_TABLE = 'sherlock_tasklist'; //Table for ACTIVE tasks
 const SHERLOCK_RESULTS_TABLE = 'sherlock_results'; //Table for results. We will store only actual results here, deleting links to disappeared from fleamarket items.
 const SHERLOCK_SEARCHNAME_HASH_ALGO = 'md5';
 
-use \Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
-use \Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
+use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
+use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity;
 
 function sherlock_d8_theme($existing, $type, $theme, $path) {
@@ -20,6 +20,21 @@ function sherlock_d8_theme($existing, $type, $theme, $path) {
     'display_queries' => [
       'variables' => ['constructed_urls_collection' => NULL,],
       'template' => 'sherlock-display-queries', //Can't contain underscores! Template name is: sherlock-display-queries.html.twig
+      'file' => 'sherlock_d8.theme.inc',
+    ],
+
+    'scheduled_email_with_search_results' => [
+      'variables' => [
+        'user_name' => NULL,
+        'markets_list' => NULL,
+        'number_of_new' => NULL,
+        'number_of_all' => NULL,
+        'search_name' => NULL,
+        'new_results' => NULL,
+        'all_results' => NULL,
+        'this_is_last_message' => NULL,
+      ],
+      'template' => 'search-results-mail-template',
       'file' => 'sherlock_d8.theme.inc',
     ],
   ];
@@ -46,7 +61,7 @@ function sherlock_d8_cron() {
   $whereClause = [
     'active_to' => [
       'comparison_value' => time(),
-      'comparison_op' => '<'
+      'comparison_op' => '<='
     ],
   ];
 
@@ -99,16 +114,36 @@ function sherlock_d8_cron() {
 
   //===================== SECOND STEP: ADD ACTUAL TASKS TO QUEUE (if they was not processed during last 24h) ===========
   $queue = \Drupal::queue('pending_user_requests');
+
+  //TODO: Upgrade my wrapper (DatabaseManager) to be able to do join(), so we will use only DatabaseManager here.
   $dbc = \Drupal::database();
 
   $getTasksQuery = $dbc->select(SHERLOCK_TASKS_TABLE, 'tt');
   $getTasksQuery->join(SHERLOCK_MAIN_TABLE, 'mt', 'tt.id = mt.task_id');
   $getTasksQuery->addField('tt', 'id', 'task_id');
   $getTasksQuery->addField('mt', 'uid', 'user_id');
-  $getTasksQuery->condition('tt.last_checked', time() - 24*60*60, '<');
+  $getTasksQuery->condition('tt.last_checked', time() - 24*60*60, '<=');
   $result = $getTasksQuery->execute();
 
   foreach ($result as $record) {
     $queue->createItem(['user_id' => $record->user_id, 'task_id' => $record->task_id]);
+  }
+}
+
+/**
+ * Implements hook_mail()
+ * @param string $key
+ * @param array $message
+ * @param array $params
+ */
+function sherlock_d8_mail(string $key, array &$message, array $params) {
+
+  switch ($key) {
+    case 'scheduled_task_completed':
+      $message['headers']['Content-Type'] = $params['headers-content-type'];
+      $message['subject'] = $params['subject'];
+      $message['body'][] = $params['message'];
+
+      break;
   }
 }

@@ -10,11 +10,15 @@ namespace Drupal\sherlock_d8\Plugin\QueueWorker;
 
 use Drupal\Core\Queue\QueueWorkerBase;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
+use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Psr\Log\LoggerInterface;
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
+use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockSearchEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockTaskEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity;
+use Drupal\sherlock_d8\CoreClasses\SherlockMailer\SherlockMailer;
 use Drupal\sherlock_d8\Controller\MarketFetchController;
 
 /**
@@ -36,14 +40,26 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
   protected $marketFetchController = null; // Will be injected in constructor from service container
 
   /**
+   * @var SherlockMailer $sherlockMailer
+   */
+  protected $sherlockMailer = null; // Will be injected in constructor from service container
+
+  /**
+   * @var LoggerInterface $logger
+   */
+  protected $logger = null; // Will be injected in constructor from service container
+
+  /**
    * @var iSherlockTaskEntity $taskEntity
    */
   protected $taskEntity = null; // Will be instantiated in constructor, TODO: Maybe rewrite this to Dependency Injection?
 
-  public function __construct(array $configuration, string $plugin_id, $plugin_definition, DatabaseManager $dbConnection, MarketFetchController $marketFetchController) {
+  public function __construct(array $configuration, string $plugin_id, $plugin_definition, DatabaseManager $dbConnection, MarketFetchController $marketFetchController, SherlockMailer $sherlockMailer, LoggerInterface $logger) {
     parent::__construct($configuration, $plugin_id, $plugin_definition);
     $this->dbConnection = $dbConnection;
     $this->marketFetchController = $marketFetchController;
+    $this->sherlockMailer = $sherlockMailer;
+    $this->logger = $logger;
 
     $this->taskEntity = SherlockEntity::getInstance('TASK', 0, $this->dbConnection);
   }
@@ -67,7 +83,17 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
      */
     $marketFetchController = $container->get('sherlock_d8.market_fetch_controller');
 
-    return new static($configuration, $plugin_id, $plugin_definition, $dbConnection, $marketFetchController);
+    /**
+     * @var SherlockMailer $sherlockMailer
+     */
+    $sherlockMailer = $container->get('sherlock_d8.mailer');
+
+    /**
+     * @var LoggerInterface $logger
+     */
+    $logger = $container->get('logger.factory')->get('sherlock_d8');
+
+    return new static($configuration, $plugin_id, $plugin_definition, $dbConnection, $marketFetchController, $sherlockMailer, $logger);
   }
 
   /**
@@ -83,9 +109,12 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
     $userID = $data['user_id'];
     $taskID = $data['task_id'];
 
-    $this->taskEntity->load($taskID, TRUE);
-
-    $taskEssence = $this->taskEntity->getTaskEssence();
+    /**
+     * @var iSherlockTaskEntity $taskEntity
+     */
+    $taskEntity = SherlockEntity::getInstance('TASK', $userID, $this->dbConnection);
+    $taskEntity->load($taskID);
+    $taskEssence = $taskEntity->getTaskEssence();
 
     $constructedUrlsCollection = $taskEssence['constructed_urls_collection'];
     $priceFrom = $taskEssence['price_from'];
@@ -133,19 +162,84 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
     }
 
     //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* HERE IS PERFECT MOMENT TO SEND EMAIL -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
+    $newResultsNumber = 0;
+    $allResultsNumber = 0;
+
+    foreach ($currentTask_NEW_results as $marketID => $resultsForGivenMarket) {
+      $newResultsNumber += count($resultsForGivenMarket);
+    }
+    unset($marketID, $resultsForGivenMarket);
+
+    foreach ($currentTask_ACTUAL_results as $marketID => $resultsForGivenMarket) {
+      $allResultsNumber += count($resultsForGivenMarket);
+    }
+    unset($marketID, $resultsForGivenMarket);
+
+    //If EOL of task minus current time is LESS than 24h, we consider this is last run of this task:
+    $thisIsLastMessage = ($taskEntity->getActiveTo() - time()) <= 24*60*60 ? TRUE : FALSE;
+
+    /**
+     * @var SherlockSearchEntity $searchEntity
+     */
+    $searchEntity = SherlockEntity::getInstance('SEARCH', $userID, $this->dbConnection);
+    $searchEntity->loadByTaskID($taskID);
+
+    $userAccount = \Drupal\user\Entity\User::load($userID);
+    $to = $userAccount->getEmail();
+    $userName = $userAccount->getAccountName();
+
+    //TODO: Refactor MarketReference, include SherlockDirectory into it (and implement abstract factory)
+    $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
+
+    $new_results = [];
+    foreach ($currentTask_NEW_results as $mid => $mResults) {
+      $new_results[$fleamarketObjects[$mid]::getMarketName()] = $mResults; //Make a new array with results, but keys are not id's (skl) but human-friendly fleamarket names (Skylots)
+    }
+    unset($mid, $mResults);
+
+    $all_results = [];
+    foreach ($currentTask_ACTUAL_results as $mid => $mResults) {
+      $all_results[$fleamarketObjects[$mid]::getMarketName()] = $mResults;
+    }
+    unset($mid, $mResults);
+
+    $renderable = [
+      '#theme' => 'scheduled_email_with_search_results',
+      '#number_of_new' => $newResultsNumber,
+      '#number_of_all' => $allResultsNumber,
+      '#user_name' => $userName,
+      '#search_name' => $searchEntity->getName(),
+      '#new_results' => $new_results,
+      '#all_results' => $all_results,
+      '#this_is_last_message' => $thisIsLastMessage,
+    ];
+
+    $subject = 'Today results for task @task_name: new - [@new_items_num]; all - [@all_items_num].';
+    $subjVars = [
+      '@task_name' => $searchEntity->getName(),
+      '@new_items_num' => $newResultsNumber,
+      '@all_items_num' => $allResultsNumber
+    ];
+
+    $this->sherlockMailer->composeMail('sherlock_d8', 'scheduled_task_completed', $userID, $subject, $subjVars, '', [], $renderable, 'text/html');
+    $sendingResult = $this->sherlockMailer->sendMail();
+
     //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
-    //Select all records with current taskID (already existing in DB at the moment) and set them IS_NEW flag to 0/FALSE:
-    SherlockTrouvailleEntity::markAsNotNew($taskID);
+    if ($sendingResult === TRUE) {
+      //Select all records with current taskID (already existing in DB at the moment) and set them IS_NEW flag to 0/FALSE:
+      SherlockTrouvailleEntity::markAsNotNew($taskID);
 
-    //FINALLY, insert new records:
-    $rowsInsertedNum = SherlockTrouvailleEntity::insertMultiple($userID, $taskID, $currentTask_NEW_results);
+      //FINALLY, insert new records:
+      $rowsInsertedNum = SherlockTrouvailleEntity::insertMultiple($userID, $taskID, $currentTask_NEW_results);
 
-    //------------- New search results for current task are now in DB! -------------------------------------------------
+      //Update last_checked timestamp, so will not touch this task anymore next 24h:
+      $taskEntity->setLastChecked(time());
+      $taskEntity->save();
 
-    //Update last_checked timestamp, so will not touch this task anymore next 24h:
-    $this->taskEntity->setLastChecked(time());
-    $this->taskEntity->save();
+      $this->logger->info('Task #@tid run completed successfully. Mail notification sent to @usermail.', ['@tid' => $taskID, '@usermail' => $to]);
+    } else {
+      $this->logger->error('Can\'t sent mail to @usermail. User ID = @uid, task ID = @tid', ['@usermail' => $to, '@uid' => $userID, '@tid' => $taskID]);
+    }
   }
-
 }
