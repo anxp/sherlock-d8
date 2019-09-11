@@ -115,22 +115,22 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
         $insertData[$n][':task_id'.$n] = $taskID;
         $insertData[$n][':fmkt_id'.$n] = $marketID;
 
-        //TODO: Validate if title is not empty, or throw exception:
+        //Item title:
         $insertData[$n][':title'.$n] = $marketResults[$i]['title'];
 
-        //TODO: Validate if this is URL, or throw exception:
+        //Item URL:
         $insertData[$n][':url'.$n] = $marketResults[$i]['link'];
 
-        //TODO: Validate if this is numeric value, or throw exception:
+        //Check if price is integer, if not - assign it to NULL:
         $insertData[$n][':price'.$n] = is_int($marketResults[$i]['price_value']) ? $marketResults[$i]['price_value'] : null;
 
-        //TODO: Validate if currency contain 3 letters (throw exception if needed), take first 3 letters anyway:
-        $insertData[$n][':currency'.$n] = $marketResults[$i]['price_currency'];
+        //Usually, currency code is 3-letters long, but anyway for reinsurance we take only first 3 letters (because in DB this field is CHAR(3)):
+        $insertData[$n][':currency'.$n] = substr($marketResults[$i]['price_currency'], 0, 3);
 
-        //TODO: Validate if this is URL, or throw exception:
+        //Thumbnail URL:
         $insertData[$n][':img_url'.$n] = $marketResults[$i]['thumbnail'];
 
-        //TODO: ADD THIS FUNCTIONALITY:
+        //TODO: RESERVED FOR FUTURE, maybe to make images permanent:
         $insertData[$n][':img_id'.$n] = 0;
 
         //TODO: Validate if hashes contain 32 symbols, or throw exception:
