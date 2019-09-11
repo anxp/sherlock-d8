@@ -122,7 +122,7 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
         $insertData[$n][':url'.$n] = $marketResults[$i]['link'];
 
         //TODO: Validate if this is numeric value, or throw exception:
-        $insertData[$n][':price'.$n] = $marketResults[$i]['price_value'];
+        $insertData[$n][':price'.$n] = is_int($marketResults[$i]['price_value']) ? $marketResults[$i]['price_value'] : null;
 
         //TODO: Validate if currency contain 3 letters (throw exception if needed), take first 3 letters anyway:
         $insertData[$n][':currency'.$n] = $marketResults[$i]['price_currency'];
