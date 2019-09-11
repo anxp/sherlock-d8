@@ -125,7 +125,7 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
         $insertData[$n][':price'.$n] = is_int($marketResults[$i]['price_value']) ? $marketResults[$i]['price_value'] : null;
 
         //Usually, currency code is 3-letters long, but anyway for reinsurance we take only first 3 letters (because in DB this field is CHAR(3)):
-        $insertData[$n][':currency'.$n] = substr($marketResults[$i]['price_currency'], 0, 3);
+        $insertData[$n][':currency'.$n] = mb_substr($marketResults[$i]['price_currency'], 0, 3);
 
         //Thumbnail URL:
         $insertData[$n][':img_url'.$n] = $marketResults[$i]['thumbnail'];

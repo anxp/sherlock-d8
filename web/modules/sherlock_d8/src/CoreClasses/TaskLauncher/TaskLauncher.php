@@ -50,25 +50,19 @@ class TaskLauncher implements iTaskLauncher {
    * @throws UnexpectedProcessInterruption
    */
   public function runTask(int $userID, int $taskID, $sendEmailNotification = TRUE): int {
-    /**
-     * @var iSherlockTaskEntity $taskEntity
-     */
-    $taskEntity = SherlockEntity::getInstance('TASK', $userID, $this->dbConnection);
-    $taskEntity->load($taskID);
-    $taskEssence = $taskEntity->getTaskEssence();
 
-    /**
-     * @var SherlockSearchEntity $searchEntity
-     */
-    $searchEntity = SherlockEntity::getInstance('SEARCH', $userID, $this->dbConnection);
-    $searchEntity->loadByTaskID($taskID);
+    $this->taskEntity = SherlockEntity::getInstance('TASK', $userID, $this->dbConnection);
+    $this->taskEntity->load($taskID);
+
+    $this->searchEntity = SherlockEntity::getInstance('SEARCH', $userID, $this->dbConnection);
+    $this->searchEntity->loadByTaskID($taskID);
 
     //Let's init private class properties:
     $this->userID = $userID;
     $this->taskID = $taskID;
-    $this->taskEntity = $taskEntity;
-    $this->searchEntity = $searchEntity;
     $this->mailSentSuccessfully = FALSE;
+
+    $taskEssence = $this->taskEntity->getTaskEssence();
 
     $constructedUrlsCollection = $taskEssence['constructed_urls_collection'];
     $priceFrom = $taskEssence['price_from'];
@@ -130,8 +124,8 @@ class TaskLauncher implements iTaskLauncher {
       $rowsInsertedNum = SherlockTrouvailleEntity::insertMultiple($userID, $taskID, $currentTask_NEW_results);
 
       //Update last_checked timestamp, so will not touch this task anymore next 24h:
-      $taskEntity->setLastChecked(time());
-      $taskEntity->save();
+      $this->taskEntity->setLastChecked(time());
+      $this->taskEntity->save();
 
       return $rowsInsertedNum;
     } else {

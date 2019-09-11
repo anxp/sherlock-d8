@@ -122,11 +122,11 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
     $to = $userAccount->getEmail();
 
     if ($newResultsNumber >= 0 && $mailNotificationStatus) {
-      $this->logger->info('Task #@tid run completed successfully. Mail notification sent to @usermail.', ['@tid' => $taskID, '@usermail' => $to]);
+      $this->logger->info('Task #@tid run completed successfully. New results from this task: [@res_number]. Mail notification sent to @usermail.', ['@tid' => $taskID, '@res_number' => $newResultsNumber, '@usermail' => $to]);
     }
 
     if ($newResultsNumber >= 0 && !$mailNotificationStatus) {
-      $this->logger->info('Task #@tid run completed successfully.', ['@tid' => $taskID]);
+      $this->logger->info('Task #@tid run completed successfully. New results from this task: [@res_number].', ['@tid' => $taskID, '@res_number' => $newResultsNumber]);
     }
 
     if ($newResultsNumber < 0) {
