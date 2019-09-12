@@ -10,6 +10,7 @@ namespace Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity;
 
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 use Drupal\Core\Database\Database;
+use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 
 class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
   const DB_INSERT_CHUNK_SIZE = 100; //Max number of rows to insert per request
@@ -93,7 +94,7 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
     return $selectedRecords;
   }
 
-  public static function insertMultiple($userID, $taskID, $dataToInsert): int {
+  public static function insertMultiple(int $userID, int $taskID, array $dataToInsert): int {
     /**
      * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
      */
@@ -133,9 +134,16 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
         //TODO: RESERVED FOR FUTURE, maybe to make images permanent:
         $insertData[$n][':img_id'.$n] = 0;
 
-        //TODO: Validate if hashes contain 32 symbols, or throw exception:
-        $insertData[$n][':url_hash'.$n] = $marketResults[$i]['url_hash'];
-        $insertData[$n][':url_price_hash'.$n] = $marketResults[$i]['url_price_hash'];
+        //Validate if hashes contain 32 symbols, or throw exception:
+        if (strlen($marketResults[$i]['url_hash']) === 32 && strlen($marketResults[$i]['url_price_hash']) === 32) {
+          $insertData[$n][':url_hash'.$n] = $marketResults[$i]['url_hash'];
+          $insertData[$n][':url_price_hash'.$n] = $marketResults[$i]['url_price_hash'];
+        } else {
+          $urlHashLen = strlen($marketResults[$i]['url_hash']);
+          $urlPriceHashLen = strlen($marketResults[$i]['url_price_hash']);
+          $exceptionMessage = 'Cannot write set of records to DB, because url_hash should be 32 sym, [' . $urlHashLen . '] detected instead; url_price_hash should be 32 sym, [' . $urlPriceHashLen . '] detected instead.';
+          throw new InvalidInputData($exceptionMessage);
+        }
 
         $n++;
       }
