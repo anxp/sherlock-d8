@@ -17,7 +17,7 @@ use function PhpQuery\pq;
  * This makes possible to create new instances automatically, knowing only marketId.
  * */
 class bsp_ItemSniper extends ItemSniper {
-  public function __construct($URL, $pageLimit, string $advertBlockSP = 'div.messages-list > div.msg-one > div.msg-inner', string $titleSP = 'div.w-body > a.m-title', string $titleLinkSP = 'div.w-body > a.m-title', string $priceSP = 'div.w-body > p.m-price > span', string $imageAddressSP = 'a.w-image > img.img-responsive', string $nextPageLinkSP = 'head > link.pag_params') {
+  public function __construct($URL, $pageLimit, string $advertBlockSP = 'div.messages-list > div.msg-one > div.msg-inner', string $titleSP = 'div.w-body a.m-title', string $titleLinkSP = 'div.w-body a.m-title', string $priceSP = 'div.w-body > p.m-price > span', string $imageAddressSP = 'a.w-image > img.img-responsive', string $nextPageLinkSP = 'head > link.pag_params') {
     parent::__construct($URL, $pageLimit, $advertBlockSP, $titleSP, $titleLinkSP, $priceSP, $imageAddressSP, $nextPageLinkSP);
   }
 
