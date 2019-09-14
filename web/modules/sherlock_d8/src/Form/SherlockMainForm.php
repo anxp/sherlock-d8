@@ -17,7 +17,7 @@ use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
-use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
+use Drupal\sherlock_d8\CoreClasses\MarketReference\MarketReference;
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 use Drupal\sherlock_d8\CoreClasses\TaskLauncher\TaskLauncher;
 
@@ -176,7 +176,7 @@ class SherlockMainForm extends FormBase {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
+        $fleamarketObjects = MarketReference::getAvailableFleamarkets(TRUE);
 
         //Print out supported flea-markets. TODO: maybe this output better to do with theme function and template file?
         $formattedList = [];
@@ -351,7 +351,7 @@ class SherlockMainForm extends FormBase {
         //Attach array with selected markets IDs to drupalSettings object, to be accessible from JS:
         $form['#attached']['drupalSettings']['sherlock_d8']['selectedMarkets'] = $form_state->get(['sherlock_tmp_storage', 'selected_markets']);
 
-        $fleamarketObjects = SherlockDirectory::getAvailableFleamarkets(TRUE);
+        $fleamarketObjects = MarketReference::getAvailableFleamarkets(TRUE);
 
         //This is the full path to animated GIF (sand clock like in windows-98), showing to user, while php script is busy in parsing fleamarkets:
         $schemeAndHttpHost = $this->getRequest()->getSchemeAndHttpHost();
@@ -861,7 +861,7 @@ class SherlockMainForm extends FormBase {
 
     //Now let's request list of all resources and their settings.
     $resourcesList = [];
-    $resourcesList = SherlockDirectory::getAvailableFleamarkets(TRUE);
+    $resourcesList = MarketReference::getAvailableFleamarkets(TRUE);
 
     //Array with all search URLs for all user-specified resources. This collection of URL we will use to cURL each of them at the next step.
     //All values are splitted by nested arrays. Keys to nested arrays are names of the resources.
