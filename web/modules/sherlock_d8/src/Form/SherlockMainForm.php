@@ -19,19 +19,28 @@ use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
 use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
+use Drupal\sherlock_d8\CoreClasses\TaskLauncher\TaskLauncher;
+
+use Drupal\sherlock_d8\CoreClasses\Exceptions\UnexpectedProcessInterruption;
+use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 
 class SherlockMainForm extends FormBase {
   /**
    * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
    */
-  protected $dbConnection;
+  protected $dbConnection = null;
 
   /**
    * The module handler service.
-   *
    * @var \Drupal\Core\Extension\ModuleHandlerInterface $moduleHandler
    */
-  protected $moduleHandler;
+  protected $moduleHandler = null;
+
+  /**
+   * Task launcher service.
+   * @var TaskLauncher
+   */
+  protected $taskLauncher = null;
 
   //ID of loaded saved search
   protected $recordID = null;
@@ -40,10 +49,12 @@ class SherlockMainForm extends FormBase {
    * Constructs a new SherlockMainForm object.
    * @param \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
    * @param ModuleHandlerInterface $moduleHandler
+   * @param TaskLauncher $taskLauncher
    */
-  public function __construct(DatabaseManager $dbConnection, ModuleHandlerInterface $moduleHandler) {
+  public function __construct(DatabaseManager $dbConnection, ModuleHandlerInterface $moduleHandler, TaskLauncher $taskLauncher) {
     $this->dbConnection = $dbConnection;
     $this->moduleHandler = $moduleHandler;
+    $this->taskLauncher = $taskLauncher;
   }
 
   public static function create(ContainerInterface $container) {
@@ -57,7 +68,12 @@ class SherlockMainForm extends FormBase {
      */
     $moduleHandler = $container->get('module_handler');
 
-    return new static($dbConnection, $moduleHandler);
+    /**
+     * @var TaskLauncher $taskLauncher
+     */
+    $taskLauncher = $container->get('sherlock_d8.task_launcher');
+
+    return new static($dbConnection, $moduleHandler, $taskLauncher);
   }
 
   public function getFormId() {
@@ -419,7 +435,7 @@ class SherlockMainForm extends FormBase {
             '::getFirstStepSubmit'
           ],
         ];
-        //---------------- Save search for future reuse ----------------------------------------------------------------
+        //---------------- Save search for future reuse block ----------------------------------------------------------
         $form['save_search_block'] = [
           '#type' => 'details',
           '#open' => FALSE,
@@ -445,6 +461,16 @@ class SherlockMainForm extends FormBase {
             '#type' => 'checkbox',
             '#title' => $this->t('Check for updates daily and send a report on new offers.'),
             '#default_value' => $subscribeForUpdatesCheckbox,
+          ];
+
+          $form['save_search_block']['now_or_tomorrow_radiobutton'] = [
+            '#type' => 'radios',
+            '#title' => $this->t('Would you like to get all current results now, or just updates starting from tomorrow?'),
+            '#default_value' => 'from_now',
+            '#options' => [
+              'from_now' => 'Mail me ALL current results NOW, and new results starting from tomorrow',
+              'from_tomorrow' => 'Mail me new results starting from tomorrow',
+            ],
           ];
 
           $form['save_search_block']['serving_period_selector'] = [
@@ -940,10 +966,65 @@ class SherlockMainForm extends FormBase {
     $searchEntity->fillObjectWithFormData($form_state);
     $searchEntity->save();
 
-    $this->displayNotifications();
+    //------ Check fleamarkets again (with saving results to DB), and, optionally, send first email notification: ------
+
+    $isSubscribeForUpdatesChecked = intval($form_state->getValue(['save_search_block', 'subscribe_to_updates']));
+
+    if ($isSubscribeForUpdatesChecked) {
+      $additionalStatusMessages = [];
+
+      /**
+       * @var iSherlockSearchEntity $searchEntity
+       */
+      $taskID = $searchEntity->getTaskId();
+
+      $nowOrTomorrowRadio = $form_state->getValue(['save_search_block', 'now_or_tomorrow_radiobutton']);
+
+      $sendMail = ($nowOrTomorrowRadio === 'from_now') ? TRUE : FALSE;
+      $rowsInsertedNum = -1;
+
+      try {
+
+        $rowsInsertedNum = $this->taskLauncher->runTask($this->currentUser()->id(), $taskID, $sendMail);
+
+      } catch (UnexpectedProcessInterruption $processInterruption) {
+
+        $additionalStatusMessages[] = [
+          'message' => $this->t('For unknown reasons requested mail cannot be sent, please try again later.'),
+          'type' => 'error'
+        ];
+
+        $this->logThisIncident($processInterruption);
+
+      } catch (InvalidInputData $invalidInputData) {
+
+        $additionalStatusMessages[] = [
+          'message' => $this->t('Cannot proceed because of incompatible data format. Please, contact support for this incident.'),
+          'type' => 'error'
+        ];
+
+        $this->logThisIncident($invalidInputData);
+      }
+
+      if ($rowsInsertedNum >= 0) {
+        $additionalStatusMessages[] = [
+          'message' => $this->t('Current search results successfully saved (synced) to database.'),
+          'type' => 'status',
+        ];
+      }
+
+      if ($this->taskLauncher->getMailNotificationStatus()) {
+        $additionalStatusMessages[] = [
+          'message' => $this->t('Also, search results just have been sent to your email. If you don\'t see the letter in the inbox, please, check spam folder.'),
+          'type' => 'status'
+        ];
+      }
+    }
+
+    $this->displayNotifications($additionalStatusMessages);
   }
 
-  public function displayNotifications() {
+  public function displayNotifications($additionalStatusMessages = []) {
     if (SherlockEntity::isSearchCreated()) {
       $this->messenger()->addStatus($this->t('Search settings and parameters have been successfully saved.'));
     }
@@ -967,6 +1048,20 @@ class SherlockMainForm extends FormBase {
     if (SherlockEntity::isTaskDeleted()) {
       $this->messenger()->addStatus($this->t('Scheduled task has been successfully deleted.'));
     }
+
+    foreach ($additionalStatusMessages as $messageBundle) {
+      if (!isset($messageBundle['type']) || !isset($messageBundle['message'])) {continue;}
+
+      switch (TRUE) {
+        case ($messageBundle['type'] === 'status'):
+          $this->messenger()->addStatus($messageBundle['message']);
+          break;
+
+        case ($messageBundle['type'] === 'error'):
+          $this->messenger()->addError($messageBundle['message']);
+          break;
+      }
+    }
   }
 
   public function constructorBlockAjaxReturn(array &$form, FormStateInterface $form_state) {
@@ -989,6 +1084,18 @@ class SherlockMainForm extends FormBase {
 
   protected function setNextStep(FormStateInterface $form_state, int $step) {
     $form_state->set('currentStep', $step);
+  }
+
+  protected function logThisIncident(\Exception $exceptionObject) {
+    //How to use logger: https://api.drupal.org/api/drupal/core!lib!Drupal.php/function/Drupal%3A%3Alogger/8.2.x
+
+    $problemFilePath = $exceptionObject->getFile();
+    $lineNumber = $exceptionObject->getLine();
+    $description = $exceptionObject->getMessage();
+
+    $this->logger('sherlock_d8')->error('Problem file: ' . $problemFilePath . '<br>' . 'Line number: ' . $lineNumber . '<br>' . 'Error description: ' . $description);
+
+    unset($problemFilePath, $lineNumber, $description);
   }
 
   public function validateForm(array &$form, FormStateInterface $form_state) {

@@ -16,7 +16,9 @@ use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockSearchEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockTaskEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockDirectory\SherlockDirectory;
+
 use Drupal\sherlock_d8\CoreClasses\Exceptions\UnexpectedProcessInterruption;
+use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 
 class TaskLauncher implements iTaskLauncher {
   protected $sherlockMailer = null;
@@ -47,7 +49,7 @@ class TaskLauncher implements iTaskLauncher {
    * @param int $taskID
    * @param bool $sendEmailNotification
    * @return int
-   * @throws UnexpectedProcessInterruption
+   * @throws UnexpectedProcessInterruption | InvalidInputData
    */
   public function runTask(int $userID, int $taskID, $sendEmailNotification = TRUE): int {
 
