@@ -11,10 +11,12 @@ namespace Drupal\sherlock_d8\CoreClasses\TaskLauncher;
 use Drupal\sherlock_d8\CoreClasses\SherlockMailer\SherlockMailer;
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 use Drupal\sherlock_d8\Controller\MarketFetchController;
+use Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity;
+
 use Drupal\sherlock_d8\CoreClasses\Exceptions\UnexpectedProcessInterruption;
 
 interface iTaskLauncher {
-  public function __construct(SherlockMailer $sherlockMailer, DatabaseManager $dbConnection, MarketFetchController $marketFetchController);
+  public function __construct(SherlockMailer $sherlockMailer, DatabaseManager $dbConnection, MarketFetchController $marketFetchController, SherlockTrouvailleEntity $trouvailleEntity);
 
   /**
    * @param int $userID

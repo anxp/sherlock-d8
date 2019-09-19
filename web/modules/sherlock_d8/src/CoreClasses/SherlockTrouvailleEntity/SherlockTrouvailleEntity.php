@@ -15,7 +15,10 @@ use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
   const DB_INSERT_CHUNK_SIZE = 100; //Max number of rows to insert per request
 
-  protected $dbConnection;
+  /**
+   * @var DatabaseManager $dbConnection
+   */
+  protected $dbConnection = null;
 
   protected $id = 0;
   protected $uid = 0;
@@ -30,13 +33,11 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
   protected $url_hash = '';
   protected $url_price_hash = '';
 
-  public static function deleteUnmatched(int $taskID, string $fieldToMatch, array $data): int {
-    //TODO: Maybe rewrite to dependency injection? But this is static method, we use it independently from trouvaille object... So let it be as it is at the moment...
-    /**
-     * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
-     */
-    $dbConnection = \Drupal::service('sherlock_d8.database_manager');
+  public function __construct(DatabaseManager $dbConnection) {
+    $this->dbConnection = $dbConnection;
+  }
 
+  public function deleteUnmatched(int $taskID, string $fieldToMatch, array $data): int {
     if (empty($data)) {
       return 0;
     }
@@ -52,7 +53,7 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
       ],
     ];
 
-    $itemsToDelete = $dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->selectRecords($selectCondition, 'id', FALSE);
+    $itemsToDelete = $this->dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->selectRecords($selectCondition, 'id', FALSE);
 
     if (empty($itemsToDelete)) {
       return 0;
@@ -67,39 +68,24 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
       ],
     ];
 
-    $rowsDeleted = $dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->deleteRecords($deleteCondition, FALSE);
+    $rowsDeleted = $this->dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->deleteRecords($deleteCondition, FALSE);
 
     return $rowsDeleted;
   }
 
-  public static function markAsNotNew(int $taskID): int {
-    /**
-     * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
-     */
-    $dbConnection = \Drupal::service('sherlock_d8.database_manager');
-
-    $rowsUpdated = $dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->setData(['is_new' => 0])->updateRecords(['task_id' => $taskID]);
+  public function markAsNotNew(int $taskID): int {
+    $rowsUpdated = $this->dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->setData(['is_new' => 0])->updateRecords(['task_id' => $taskID]);
 
     return $rowsUpdated;
   }
 
-  public static function getRecordsForSpecifiedTask($taskID, $keyResultBy): array {
-    /**
-     * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
-     */
-    $dbConnection = \Drupal::service('sherlock_d8.database_manager');
-
-    $selectedRecords = $dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->selectRecords(['task_id' => $taskID], $keyResultBy);
+  public function getRecordsForSpecifiedTask($taskID, $keyResultBy): array {
+    $selectedRecords = $this->dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->selectRecords(['task_id' => $taskID], $keyResultBy);
 
     return $selectedRecords;
   }
 
-  public static function insertMultiple(int $userID, int $taskID, array $dataToInsert): int {
-    /**
-     * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
-     */
-    $dbConnection = \Drupal::service('sherlock_d8.database_manager');
-
+  public function insertMultiple(int $userID, int $taskID, array $dataToInsert): int {
     //Dynamically build INSERT query with placeholders. We separately build insertQuery, which contains ONLY placeholders, and
     //insertData, which contain associative array with placeholders names and their values, as discussed here -
     //https://stackoverflow.com/questions/15069962/php-pdo-insert-batch-multiple-rows-with-placeholders
@@ -173,20 +159,16 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
         }
         unset($chunkElement);
 
-        $rowsInsertedTotal += $dbConnection->query($insertQueryCurrentIteration, $insertDataCurrentIteration, ['return' => Database::RETURN_AFFECTED]);
+        $rowsInsertedTotal += $this->dbConnection->query($insertQueryCurrentIteration, $insertDataCurrentIteration, ['return' => Database::RETURN_AFFECTED]);
       }
     }
 
     return $rowsInsertedTotal;
   }
 
-  public static function deleteByTaskID($taskID): int {
-    /**
-     * @var \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
-     */
-    $dbConnection = \Drupal::service('sherlock_d8.database_manager');
-
-    $deletedRowsNum = $dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->deleteRecords(['task_id' => $taskID]);
+  public function deleteByTaskID($taskID): int {
+    $deletedRowsNum = $this->dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->deleteRecords(['task_id' => $taskID]);
     return $deletedRowsNum;
   }
 }
+

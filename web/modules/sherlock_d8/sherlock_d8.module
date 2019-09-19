@@ -56,6 +56,8 @@ function sherlock_d8_cron() {
    */
   $logger = \Drupal::logger('sherlock_d8');
 
+  $sherlockTrouvailleEntity = new SherlockTrouvailleEntity($dbConnection);
+
   //===================== FIRST STEP: REMOVE EXPIRED TASKS =============================================================
   //Prepare WHERE clause to select expired records from tasks table:
   $whereClause = [
@@ -79,7 +81,7 @@ function sherlock_d8_cron() {
 
     for ($i=0; $i < count($idsToDelete); $i++) {
       //Delete RESULTS for current task:
-      SherlockTrouvailleEntity::deleteByTaskID($idsToDelete[$i]);
+      $sherlockTrouvailleEntity->deleteByTaskID($idsToDelete[$i]);
 
       //Delete current task itself:
       $savedTaskObject->delete($idsToDelete[$i], TRUE);

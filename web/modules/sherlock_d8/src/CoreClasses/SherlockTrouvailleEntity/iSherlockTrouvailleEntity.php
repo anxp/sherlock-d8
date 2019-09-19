@@ -8,9 +8,9 @@
 namespace Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity;
 
 interface iSherlockTrouvailleEntity {
-  public static function deleteUnmatched(int $taskID, string $urlPriceHash, array $hashpool): int;
-  public static function markAsNotNew(int $taskID): int;
-  public static function getRecordsForSpecifiedTask(int $taskID, string $keyResultBy): array;
-  public static function insertMultiple(int $userID, int $taskID, array $dataToInsert): int;
-  public static function deleteByTaskID($taskID): int;
+  public function deleteUnmatched(int $taskID, string $urlPriceHash, array $hashpool): int;
+  public function markAsNotNew(int $taskID): int;
+  public function getRecordsForSpecifiedTask(int $taskID, string $keyResultBy): array;
+  public function insertMultiple(int $userID, int $taskID, array $dataToInsert): int;
+  public function deleteByTaskID($taskID): int;
 }

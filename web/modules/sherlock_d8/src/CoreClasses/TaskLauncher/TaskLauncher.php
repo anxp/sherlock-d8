@@ -24,6 +24,7 @@ class TaskLauncher implements iTaskLauncher {
   protected $sherlockMailer = null;
   protected $dbConnection = null;
   protected $marketFetchController = null;
+  protected $trouvailleEntity = null;
 
   /**
    * @var iSherlockTaskEntity $taskEntity
@@ -38,10 +39,11 @@ class TaskLauncher implements iTaskLauncher {
   private $taskID = 0;
   private $mailSentSuccessfully = FALSE;
 
-  public function __construct(SherlockMailer $sherlockMailer, DatabaseManager $dbConnection, MarketFetchController $marketFetchController) {
+  public function __construct(SherlockMailer $sherlockMailer, DatabaseManager $dbConnection, MarketFetchController $marketFetchController, SherlockTrouvailleEntity $trouvailleEntity) {
     $this->sherlockMailer = $sherlockMailer;
     $this->dbConnection = $dbConnection;
     $this->marketFetchController = $marketFetchController;
+    $this->trouvailleEntity = $trouvailleEntity;
   }
 
   /**
@@ -75,7 +77,7 @@ class TaskLauncher implements iTaskLauncher {
 
     $url_Hashpool = [];
     $urlprice_Hashpool = [];
-    $hashesOfAlreadyExistingRecords = array_keys(SherlockTrouvailleEntity::getRecordsForSpecifiedTask($taskID, 'url_price_hash'));
+    $hashesOfAlreadyExistingRecords = array_keys($this->trouvailleEntity->getRecordsForSpecifiedTask($taskID, 'url_price_hash'));
 
     foreach ($constructedUrlsCollection as $marketID => $urlsSetForGivenMarket) {
       //Request and get results from remote resources:
@@ -108,7 +110,7 @@ class TaskLauncher implements iTaskLauncher {
 
     //Actualize data in our DB: check already existing records, and DELETE records, which are NOT IN $currentTask_ACTUAL_results:
     if (!empty($urlprice_Hashpool)) {
-      SherlockTrouvailleEntity::deleteUnmatched($taskID, 'url_price_hash', $urlprice_Hashpool);
+      $this->trouvailleEntity->deleteUnmatched($taskID, 'url_price_hash', $urlprice_Hashpool);
     }
 
     //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-* HERE IS PERFECT MOMENT TO SEND EMAIL -*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
@@ -120,10 +122,10 @@ class TaskLauncher implements iTaskLauncher {
     //If mail sent successfully, OR we didn't requested to send email:
     if ($this->mailSentSuccessfully === TRUE || $sendEmailNotification === FALSE) {
       //Select all records with current taskID (already existing in DB at the moment) and set them IS_NEW flag to 0/FALSE:
-      SherlockTrouvailleEntity::markAsNotNew($taskID);
+      $this->trouvailleEntity->markAsNotNew($taskID);
 
       //FINALLY, insert new records:
-      $rowsInsertedNum = SherlockTrouvailleEntity::insertMultiple($userID, $taskID, $currentTask_NEW_results);
+      $rowsInsertedNum = $this->trouvailleEntity->insertMultiple($userID, $taskID, $currentTask_NEW_results);
 
       //Update last_checked timestamp, so will not touch this task anymore next 24h:
       $this->taskEntity->setLastChecked(time());
