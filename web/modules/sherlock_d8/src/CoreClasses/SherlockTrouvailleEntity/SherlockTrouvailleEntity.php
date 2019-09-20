@@ -9,11 +9,11 @@
 namespace Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity;
 
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
-use Drupal\Core\Database\Database;
 use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
+use Drupal\sherlock_d8\Traits\SqlNative;
 
 class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
-  const DB_INSERT_CHUNK_SIZE = 100; //Max number of rows to insert per request
+  use SqlNative;
 
   /**
    * @var DatabaseManager $dbConnection
@@ -32,6 +32,10 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
   protected $item_img = '';
   protected $url_hash = '';
   protected $url_price_hash = '';
+
+  protected function getDbConnection(): DatabaseManager {
+    return $this->dbConnection;
+  }
 
   public function __construct(DatabaseManager $dbConnection) {
     $this->dbConnection = $dbConnection;
@@ -86,44 +90,39 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
   }
 
   public function insertMultiple(int $userID, int $taskID, array $dataToInsert): int {
-    //Dynamically build INSERT query with placeholders. We separately build insertQuery, which contains ONLY placeholders, and
-    //insertData, which contain associative array with placeholders names and their values, as discussed here -
-    //https://stackoverflow.com/questions/15069962/php-pdo-insert-batch-multiple-rows-with-placeholders
-    $insertQuery = [];
+    //Prepare data for insertion:
     $insertData = [];
-    $n = 0;
 
     foreach ($dataToInsert as $marketID => $marketResults) {
       $marketResultsCount = count($marketResults);
       for ($i = 0; $i < $marketResultsCount; $i++) {
-        $insertQuery[$n] = '(:uid'.$n.', :task_id'.$n.', :fmkt_id'.$n.', :title'.$n.', :url'.$n.', :price'.$n.', :currency'.$n.', :img_url'.$n.', :img_id'.$n.', :url_hash'.$n.', :url_price_hash'.$n.')';
-
-        $insertData[$n][':uid'.$n] = $userID;
-        $insertData[$n][':task_id'.$n] = $taskID;
-        $insertData[$n][':fmkt_id'.$n] = $marketID;
+        $oneRecord = [];
+        $oneRecord['uid'] = $userID;
+        $oneRecord['task_id'] = $taskID;
+        $oneRecord['fmkt_id'] = $marketID;
 
         //Item title:
-        $insertData[$n][':title'.$n] = $marketResults[$i]['title'];
+        $oneRecord['title'] = $marketResults[$i]['title'];
 
         //Item URL:
-        $insertData[$n][':url'.$n] = $marketResults[$i]['link'];
+        $oneRecord['url'] = $marketResults[$i]['link'];
 
         //Check if price is integer, if not - assign it to NULL:
-        $insertData[$n][':price'.$n] = is_int($marketResults[$i]['price_value']) ? $marketResults[$i]['price_value'] : null;
+        $oneRecord['price'] = intval($marketResults[$i]['price_value']) > 0 ? intval($marketResults[$i]['price_value']) : null;
 
         //Usually, currency code is 3-letters long, but anyway for reinsurance we take only first 3 letters (because in DB this field is CHAR(3)):
-        $insertData[$n][':currency'.$n] = mb_substr($marketResults[$i]['price_currency'], 0, 3);
+        $oneRecord['currency'] = mb_substr($marketResults[$i]['price_currency'], 0, 3);
 
         //Thumbnail URL:
-        $insertData[$n][':img_url'.$n] = $marketResults[$i]['thumbnail'];
+        $oneRecord['img_url'] = $marketResults[$i]['thumbnail'];
 
         //TODO: RESERVED FOR FUTURE, maybe to make images permanent:
-        $insertData[$n][':img_id'.$n] = 0;
+        $oneRecord['img_id'] = 0;
 
         //Validate if hashes contain 32 symbols, or throw exception:
         if (strlen($marketResults[$i]['url_hash']) === 32 && strlen($marketResults[$i]['url_price_hash']) === 32) {
-          $insertData[$n][':url_hash'.$n] = $marketResults[$i]['url_hash'];
-          $insertData[$n][':url_price_hash'.$n] = $marketResults[$i]['url_price_hash'];
+          $oneRecord['url_hash'] = $marketResults[$i]['url_hash'];
+          $oneRecord['url_price_hash'] = $marketResults[$i]['url_price_hash'];
         } else {
           $urlHashLen = strlen($marketResults[$i]['url_hash']);
           $urlPriceHashLen = strlen($marketResults[$i]['url_price_hash']);
@@ -131,37 +130,12 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
           throw new InvalidInputData($exceptionMessage);
         }
 
-        $n++;
+        $insertData[] = $oneRecord;
       }
     }
     unset($marketID, $marketResults);
 
-    //Next, instead of simply INSERT set of rows to DB, we should check if data isn't too big,
-    //and if it is, -> split data into chunks. We will split data into 100 rows (self::DB_INSERT_CHUNK_SIZE) per insert-operation.
-    $rowsInsertedTotal = 0;
-
-    if (!empty($insertQuery) && !empty($insertData) && count($insertQuery) === count($insertData)) {
-      $insertQueryChunked = array_chunk($insertQuery, self::DB_INSERT_CHUNK_SIZE);
-      $insertDataChunked = array_chunk($insertData, self::DB_INSERT_CHUNK_SIZE);
-
-      $numberOfChunks = count($insertQueryChunked);
-
-      for ($i = 0; $i < $numberOfChunks; $i++) {
-        $insertQueryCurrentIteration = 'INSERT INTO {' . SHERLOCK_RESULTS_TABLE . '} (uid, task_id, fmkt_id, title, url, price, currency, img_url, img_id, url_hash, url_price_hash) VALUES ';
-
-        $insertQueryCurrentIteration .= implode(', ', $insertQueryChunked[$i]);
-        $insertQueryCurrentIteration .= ';';
-
-        $insertDataCurrentIteration = [];
-
-        foreach ($insertDataChunked[$i] as $chunkElement) {
-          $insertDataCurrentIteration = array_merge($insertDataCurrentIteration, $chunkElement);
-        }
-        unset($chunkElement);
-
-        $rowsInsertedTotal += $this->dbConnection->query($insertQueryCurrentIteration, $insertDataCurrentIteration, ['return' => Database::RETURN_AFFECTED]);
-      }
-    }
+    $rowsInsertedTotal = $this->insert(SHERLOCK_RESULTS_TABLE, $insertData);
 
     return $rowsInsertedTotal;
   }
