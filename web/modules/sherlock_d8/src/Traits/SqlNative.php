@@ -23,6 +23,12 @@ trait SqlNative {
     $queryPlaceholders = [];
     $queryData = [];
 
+    $insertData = array_values($insertData); //Just to be sure array is re-indexed and starting from 0!
+
+    if (!isset($insertData[0])) {
+      return 0;
+    }
+    
     $fieldNamesAsString = implode(', ', array_keys($insertData[0]));
 
     $insertRowsNum = count($insertData);
