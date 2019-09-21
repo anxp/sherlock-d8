@@ -107,8 +107,9 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
         //Item URL:
         $oneRecord['url'] = $marketResults[$i]['link'];
 
-        //Check if price is integer, if not - assign it to NULL:
-        $oneRecord['price'] = intval($marketResults[$i]['price_value']) > 0 ? intval($marketResults[$i]['price_value']) : null;
+        //Check if price can be converted to integer, if not - assign it to NULL:
+        $priceInt = intval($marketResults[$i]['price_value']);
+        $oneRecord['price'] = $priceInt > 0 ? $priceInt : null;
 
         //Usually, currency code is 3-letters long, but anyway for reinsurance we take only first 3 letters (because in DB this field is CHAR(3)):
         $oneRecord['currency'] = mb_substr($marketResults[$i]['price_currency'], 0, 3);
@@ -135,7 +136,7 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
     }
     unset($marketID, $marketResults);
 
-    $rowsInsertedTotal = $this->insert(SHERLOCK_RESULTS_TABLE, $insertData);
+    $rowsInsertedTotal = $this->fastInsert(SHERLOCK_RESULTS_TABLE, $insertData);
 
     return $rowsInsertedTotal;
   }

@@ -16,7 +16,7 @@ trait SqlNative {
 
   abstract protected function getDbConnection(): DatabaseManager;
 
-  public function insert(string $tableName, array $insertData): int {
+  public function fastInsert(string $tableName, array $insertData): int {
     //Dynamically build INSERT query with placeholders. We separately build $queryPlaceholders, which contains ONLY placeholders, and
     //$queryData, which is array of associative arrays with placeholders names and their values, as discussed here -
     //https://stackoverflow.com/questions/15069962/php-pdo-insert-batch-multiple-rows-with-placeholders
@@ -30,18 +30,22 @@ trait SqlNative {
     for ($i = 0; $i < $insertRowsNum; $i++) {
       $placeholdersString = '';
 
-      //Construct string with placeholders, and assemble each element of $queryData[i] (array where keys are names of placeholders and values - are their values)
-      //after foreach loop $placeholdersString will look like ":uid1,:task_id1,:fmkt_id1,:title1,:url1,"
       foreach ($insertData[$i] as $fieldName => $fieldValue) {
+        /*
+         * Construct string with placeholders.
+         * After foreach loop $placeholdersString will look like ":uid1,:task_id1,:fmkt_id1,:title1,:url1,"
+         */
         $placeholdersString .= ':' . $fieldName . $i . ',';
+
+        /*
+         * Assemble each element of $queryData[i] (array where keys are names of placeholders and values - are their values)
+         */
         $queryData[$i][':' . $fieldName . $i] = $fieldValue;
       }
       unset($fieldName, $fieldValue);
 
-      //Remove ending comma from placeholders string:
-      $placeholdersString = rtrim($placeholdersString, ',');
-
-      $placeholdersString = '(' . $placeholdersString . ')';
+      $placeholdersString = rtrim($placeholdersString, ','); //Remove ending comma from placeholders string
+      $placeholdersString = '(' . $placeholdersString . ')'; //Wrap CURRENT SET of placeholders in parentheses
 
       $queryPlaceholders[$i] = $placeholdersString;
     }
