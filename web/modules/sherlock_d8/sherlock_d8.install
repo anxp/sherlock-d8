@@ -209,5 +209,45 @@ function sherlock_d8_schema() {
     ],
   ];
 
+  $schema[SHERLOCK_RESULTS_CACHE_TABLE] = [
+    'description' => 'Cache results while user interacting with form.',
+    'fields' => [
+      'id' => [
+        'description' => 'The primary identifier for cached records.',
+        'type' => 'serial', //Because we want this field to be autoincremented.
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+
+      'url_query_hash' => [
+        'description' => 'Hash of URL query (URL combined with search keywords and params).',
+        'type' => 'char',
+        'length' => 32,
+        'not null' => TRUE,
+      ],
+
+      'serialized_results' => [
+        'description' => 'Serialized array with results for current URL query.',
+        'type' => 'text',
+      ],
+
+      'created' => [
+        'description' => 'Time created in timestamp format.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ],
+    ],
+
+    'primary key' => [
+      'id',
+    ],
+
+    'unique keys' => [
+      'url_query_hash' => [
+        'url_query_hash',
+      ],
+    ],
+  ];
+
   return $schema;
 }

@@ -9,12 +9,32 @@
 namespace Drupal\sherlock_d8\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Drupal\sherlock_d8\CoreClasses\ItemSniper\{ItemSniper, olx_ItemSniper, bsp_ItemSniper, skl_ItemSniper};
 use Drupal\sherlock_d8\CoreClasses\ArrayFiltration_2D\ArrayFiltration_2D;
 use Drupal\sherlock_d8\CoreClasses\FileManager\FileManager;
+use Drupal\sherlock_d8\CoreClasses\SherlockCacheEntity\SherlockCacheEntity;
 
 class MarketFetchController extends ControllerBase {
+  /**
+   * @var SherlockCacheEntity $sherlockCache
+   */
+  protected $sherlockCache = null;
+
+  public function __construct($sherlockCache) {
+    $this->sherlockCache = $sherlockCache;
+  }
+
+  public static function create(ContainerInterface $container) {
+    /**
+     * @var SherlockCacheEntity $sherlockCache
+     */
+    $sherlockCache = $container->get('sherlock_d8.cache_entity');
+
+    return new static($sherlockCache);
+  }
+
   public function fetchMarketCore(string $marketID, array $urlsSetForGivenMarket, int $priceFrom = null, int $priceTo = null): array {
     $itemSniperFullNamespacePath = '\Drupal\sherlock_d8\CoreClasses\ItemSniper\\';
 
@@ -24,14 +44,20 @@ class MarketFetchController extends ControllerBase {
 
     $snipeRawResults = [];
     for ($i = 0; $i < count($urlsSetForGivenMarket); $i++) {
-      $sniperObject = new $objName($urlsSetForGivenMarket[$i], 5); //Create new object of somemarket_ItemSniper.
-      $oneQueryResult = $sniperObject->grabItems();
-      unset($sniperObject);
+      //Try to get cache (if it exists!):
+      $hashAsName = hash(SHERLOCK_SEARCHNAME_HASH_ALGO, $urlsSetForGivenMarket[$i]);
+
+      $oneQueryResult = $this->sherlockCache->load($hashAsName);
+
+      if (empty($oneQueryResult)) {
+        $sniperObject = new $objName($urlsSetForGivenMarket[$i], 5); //Create new object of somemarket_ItemSniper.
+        $oneQueryResult = $sniperObject->grabItems();
+        unset($sniperObject);
+        $this->sherlockCache->save($hashAsName, $oneQueryResult);
+      }
+
       $snipeRawResults[$urlsSetForGivenMarket[$i]] = $oneQueryResult;
     }
-
-    //TODO - Here is perfect place to cache search results ($snipeRawResults)
-    //TODO; for given searchURL ($snipeRawResults['key']) in DB.
 
     $rawResultsFlattened = [];
     foreach ($snipeRawResults as $resultsPerURL) {

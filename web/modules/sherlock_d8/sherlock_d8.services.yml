@@ -5,6 +5,7 @@ services:
 
   sherlock_d8.market_fetch_controller:
     class: Drupal\sherlock_d8\Controller\MarketFetchController
+    arguments: ['@sherlock_d8.cache_entity']
 
   sherlock_d8.mailer:
     class: Drupal\sherlock_d8\CoreClasses\SherlockMailer\SherlockMailer
@@ -17,3 +18,7 @@ services:
   sherlock_d8.task_launcher:
     class: Drupal\sherlock_d8\CoreClasses\TaskLauncher\TaskLauncher
     arguments: ['@sherlock_d8.mailer', '@sherlock_d8.database_manager', '@sherlock_d8.market_fetch_controller', '@sherlock_d8.trouvaille_entity']
+
+  sherlock_d8.cache_entity:
+    class: Drupal\sherlock_d8\CoreClasses\SherlockCacheEntity\SherlockCacheEntity
+    arguments: ['@sherlock_d8.database_manager']

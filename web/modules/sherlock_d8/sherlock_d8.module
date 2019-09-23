@@ -3,11 +3,13 @@
 const SHERLOCK_MAIN_TABLE = 'sherlock_user_input'; //Here we will store searches (serialized user-filled forms and their values)
 const SHERLOCK_TASKS_TABLE = 'sherlock_tasklist'; //Table for ACTIVE tasks
 const SHERLOCK_RESULTS_TABLE = 'sherlock_results'; //Table for results. We will store only actual results here, deleting links to disappeared from fleamarket items.
+const SHERLOCK_RESULTS_CACHE_TABLE = 'sherlock_results_cache'; //Table for caching search results. To minimize waiting time and load on external resources while user interacting with form.
 const SHERLOCK_SEARCHNAME_HASH_ALGO = 'md5';
 
 use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity;
+use Drupal\sherlock_d8\CoreClasses\SherlockCacheEntity\SherlockCacheEntity;
 
 function sherlock_d8_theme($existing, $type, $theme, $path) {
   return [
@@ -130,6 +132,11 @@ function sherlock_d8_cron() {
   foreach ($result as $record) {
     $queue->createItem(['user_id' => $record->user_id, 'task_id' => $record->task_id]);
   }
+
+  //===================== THIRD STEP: CLEAN EXPIRED CACHE ==============================================================
+  $sherlockCache = new SherlockCacheEntity($dbConnection);
+  $cacheEntriesDeleted = $sherlockCache->deleteExpired();
+  $logger->info('Deleted [@num] expired cache entries from "sherlock_results_cache" table', ['@num' => $cacheEntriesDeleted]);
 }
 
 /**
