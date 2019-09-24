@@ -68,6 +68,11 @@ class TaskLauncher implements iTaskLauncher {
 
     $taskEssence = $this->taskEntity->getTaskEssence();
 
+    //If task appears empty (by unknown reason) -> just do nothing, but finish process as normal task.
+    if (empty($taskEssence)) {
+      return 0;
+    }
+
     $constructedUrlsCollection = $taskEssence['constructed_urls_collection'];
     $priceFrom = $taskEssence['price_from'];
     $priceTo = $taskEssence['price_to'];
