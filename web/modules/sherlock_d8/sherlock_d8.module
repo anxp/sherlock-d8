@@ -136,7 +136,9 @@ function sherlock_d8_cron() {
   //===================== THIRD STEP: CLEAN EXPIRED CACHE ==============================================================
   $sherlockCache = new SherlockCacheEntity($dbConnection);
   $cacheEntriesDeleted = $sherlockCache->deleteExpired();
-  $logger->info('Deleted [@num] expired cache entries from "sherlock_results_cache" table', ['@num' => $cacheEntriesDeleted]);
+  if ($cacheEntriesDeleted) {
+    $logger->info('Deleted [@num] expired cache entries from "sherlock_results_cache" table', ['@num' => $cacheEntriesDeleted]);
+  }
 }
 
 /**

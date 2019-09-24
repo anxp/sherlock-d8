@@ -69,6 +69,7 @@ class TaskLauncher implements iTaskLauncher {
     $taskEssence = $this->taskEntity->getTaskEssence();
 
     //If task appears empty (by unknown reason) -> just do nothing, but finish process as normal task.
+    //This is very important part, because it prevents 'ghosts' of nonexistent\empty tasks to create bottleneck in Queue
     if (empty($taskEssence)) {
       return 0;
     }
