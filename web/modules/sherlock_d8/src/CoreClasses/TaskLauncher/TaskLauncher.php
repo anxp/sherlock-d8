@@ -188,8 +188,9 @@ class TaskLauncher implements iTaskLauncher {
       '#this_is_last_message' => $thisIsLastMessage,
     ];
 
-    $subject = 'Today results for task @task_name: new - [@new_items_num]; all - [@all_items_num].';
+    $subject =  '@current_date, search results for @task_name: new - [@new_items_num]; all - [@all_items_num].';
     $subjVars = [
+      '@current_date' => date('j M'),
       '@task_name' => $this->searchEntity->getName(),
       '@new_items_num' => $newResultsNumber,
       '@all_items_num' => $allResultsNumber
