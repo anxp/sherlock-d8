@@ -17,13 +17,15 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
    */
   protected $dbConnection = null;
   protected $tableName = '';
+  protected $cacheLifeHours = 0;
 
-  public function __construct(DatabaseManager $dbConnection) {
+  public function __construct(DatabaseManager $dbConnection, string $tableName = SHERLOCK_RESULTS_CACHE_TABLE, int $cacheLifeHours = self::CACHE_LIFE_HOURS) {
     $this->dbConnection = $dbConnection;
-    $this->tableName = SHERLOCK_RESULTS_CACHE_TABLE;
+    $this->tableName = $tableName;
+    $this->cacheLifeHours = $cacheLifeHours;
   }
 
-  public function load(string $urlQueryHash, $loadNotOlderThanInHours = self::CACHE_LIFE_HOURS): array {
+  public function load(string $urlQueryHash): array {
     if (strlen($urlQueryHash) !== 32) {
       //This is not TOP-critical exception, we need just write in to log, but continue normal program execution after it!
       throw new InvalidInputData('Incorrect hash length gotten in SherlockCacheEntity::load');
@@ -40,8 +42,8 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
     }
 
     $cachedResults = array_shift($cachedResults);
-    //If cache is older than we need, just return empty array:
-    if (intval($cachedResults['created']) < (time() - $loadNotOlderThanInHours * 60 * 60)) {
+    //If cache is older than we need, just return empty array too:
+    if (intval($cachedResults['created']) < (time() - $this->cacheLifeHours * 60 * 60)) {
       return [];
     }
 
@@ -49,7 +51,7 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
     return $resultsIndexedArray;
   }
 
-  public function save(string $hashAsName, array $queryUrlResults, bool $overwriteExpiredCache = TRUE, int $expirationTimeInHours = self::CACHE_LIFE_HOURS): int {
+  public function save(string $hashAsName, array $queryUrlResults, bool $overwriteExpiredCache = TRUE): int {
     $oneRecord = [
       'url_query_hash' => $hashAsName,
       'serialized_results' => serialize($queryUrlResults),
@@ -60,7 +62,7 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
     if ($overwriteExpiredCache) {
       $condition = [
         'created' => [
-          'comparison_value' => time() - $expirationTimeInHours * 60 * 60,
+          'comparison_value' => time() - $this->cacheLifeHours * 60 * 60,
           'comparison_op' => '<',
         ],
 
@@ -81,10 +83,10 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
     return 0;
   }
 
-  public function deleteExpired($expirationTimeInHours = self::CACHE_LIFE_HOURS): int {
+  public function deleteExpired(): int {
     $condition = [
       'created' => [
-        'comparison_value' => time() - $expirationTimeInHours * 60 * 60,
+        'comparison_value' => time() - $this->cacheLifeHours * 60 * 60,
         'comparison_op' => '<',
       ],
     ];
