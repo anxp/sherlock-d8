@@ -966,13 +966,12 @@ class SherlockMainForm extends FormBase {
     $searchEntity->fillObjectWithFormData($form_state);
     $searchEntity->save();
 
-    //------ Check fleamarkets again (with saving results to DB), and, optionally, send first email notification: ------
+    // Check fleamarkets again (actually, load results from cache), and, optionally, send first email notification:
 
     $isSubscribeForUpdatesChecked = intval($form_state->getValue(['save_search_block', 'subscribe_to_updates']));
-
+    $additionalStatusMessages = [];
+    
     if ($isSubscribeForUpdatesChecked) {
-      $additionalStatusMessages = [];
-
       /**
        * @var iSherlockSearchEntity $searchEntity
        */
