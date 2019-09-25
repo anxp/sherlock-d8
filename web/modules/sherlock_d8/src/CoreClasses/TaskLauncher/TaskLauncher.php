@@ -190,7 +190,7 @@ class TaskLauncher implements iTaskLauncher {
 
     $subject =  '@current_date, search results for @task_name: new - [@new_items_num]; all - [@all_items_num].';
     $subjVars = [
-      '@current_date' => date('j F'),
+      '@current_date' => date('j \of F'),
       '@task_name' => $this->searchEntity->getName(),
       '@new_items_num' => $newResultsNumber,
       '@all_items_num' => $allResultsNumber

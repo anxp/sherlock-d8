@@ -9,11 +9,17 @@
   all_results
   this_is_last_message
 #}
-
-<p>Hello, {{ user_name }}! You received this email because you subscribed to receive updates on your search <strong>"{{ search_name }}"</strong>.</p>
+<html>
+<head>
+  <meta charset="UTF-8">
+</head>
+<body>
+<p>Hello, {{ user_name }}! You received this email because you subscribed to receive updates on your search
+  <strong>"{{ search_name }}"</strong>.</p>
 
 {% if this_is_last_message == true %}
-  <p><i>Please note, this is the last message in your current subscription. If you are still interested in tracking results of your saved search, please renew subscription by visiting sherlock-ua.bid/fm-scan.</i></p>
+  <p><i>Please note, this is the last message in your current subscription. If you are still interested in tracking
+      results of your saved search, please renew subscription by visiting sherlock-ua.bid/fm-scan.</i></p>
 {% endif %}
 
 <p>
@@ -26,36 +32,52 @@
 
 <h3>New results ({{ number_of_new }}):</h3>
 
-<ul style="list-style: none;">
-  {% for name, result_set in new_results %}
-    <li><h2>{{ name }}:</h2>
-      <table border="1" cellspacing="0" cellpadding="5">
-        {% for result in result_set %}
-        <tr>
-          <td>
-            <a href="{{ result.link }}"><img src="{{ result.thumbnail }}" width="80" alt="{{ result.title }}"></a>
-          </td>
-          <td valign="top">
-            <h4><a href="{{ result.link }}">{{ result.title }}</a></h4>
-            <p>{{ result.price_value }} {{ result.price_currency }}</p>
-          </td>
-        </tr>
-        {% endfor %}
-      </table>
-    </li>
-  {% endfor %}
-</ul>
+{% for name, result_set in new_results %}
+  <h3>{{ name }} ({{ result_set|length }}):</h3>
+
+  {# Usually, number of items is not int-devides by 4. So we should calculate how many empty table cells (<td>) append after last not-empty <td>, to have valid HTML #}
+  {% set complementary_cells_num = (4 - (result_set|length)%4) %}
+
+  <table border="0" cellspacing="5" cellpadding="5">
+    <tr>
+      {% for result in result_set %}
+      <td style="background-color:#EEEEEE; text-align:center" bgcolor="#DDDDDD">
+        <a href="{{ result.link }}"><img src="{{ result.thumbnail }}" width="140" alt="{{ result.title }}"></a>
+        <p><a href="{{ result.link }}">{{ result.title|slice(0, 20) }}...</a></p>
+        <p style="font-size: large; text-align: center;">{{ result.price_value }} {{ result.price_currency }}</p>
+      </td>
+
+      {# If end of row detected -> close current row and begin new #}
+      {% if (loop.index)%4 == 0 %}
+    </tr>
+    <tr>
+      {% endif %}
+      {% endfor %}
+
+      {% for i in 1..complementary_cells_num %}
+        <td>
+          {# Here is just empty cell(s) #}
+        </td>
+      {% endfor %}
+    </tr>
+  </table>
+{% endfor %}
 
 <h3>All results ({{ number_of_all }}):</h3>
 <ul style="list-style: none;">
   {% for name, result_set in all_results %}
-    <li><h2>{{ name }}:</h2>
+    <li><h3>{{ name }} ({{ result_set|length }}):</h3>
+      {% if result_set|length == 0 %}
+        <p>No results for this market.</p>
+      {% endif %}
       <ul>
         {% for result in result_set %}
-          <li><a href="{{ result.link }}">{{ result.title }}</a>, {{ result.price_value }} {{ result.price_currency }}</li>
+          <li><a href="{{ result.link }}">{{ result.title }}</a>, {{ result.price_value }} {{ result.price_currency }}
+          </li>
         {% endfor %}
       </ul>
     </li>
   {% endfor %}
 </ul>
-
+</body>
+</html>
