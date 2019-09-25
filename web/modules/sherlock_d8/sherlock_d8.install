@@ -229,6 +229,7 @@ function sherlock_d8_schema() {
       'serialized_results' => [
         'description' => 'Serialized array with results for current URL query.',
         'type' => 'text',
+        'size' => 'medium',
       ],
 
       'created' => [
