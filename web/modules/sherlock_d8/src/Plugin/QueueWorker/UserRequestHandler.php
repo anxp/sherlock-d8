@@ -100,9 +100,12 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
     $taskID = $data['task_id'];
 
     $newResultsNumber = -1;
+    $timeStampBeforeExecution = time();
+    $spentTime = -1;
 
     try {
       $newResultsNumber = $this->taskLauncher->runTask($userID, $taskID, TRUE);
+      $spentTime = time() - $timeStampBeforeExecution;
     } catch (UnexpectedProcessInterruption $exception) {
       $problemFilePath = $exception->getFile();
       $lineNumber = $exception->getLine();
@@ -122,11 +125,11 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
     $to = $userAccount->getEmail();
 
     if ($newResultsNumber >= 0 && $mailNotificationStatus) {
-      $this->logger->info('Task #@tid run completed successfully. New results from this task: [@res_number]. Mail notification sent to @usermail.', ['@tid' => $taskID, '@res_number' => $newResultsNumber, '@usermail' => $to]);
+      $this->logger->info('Task #@tid run completed successfully. New results from this task: [@res_number]. Task execution took @time sec. Mail notification sent to @usermail.', ['@tid' => $taskID, '@res_number' => $newResultsNumber, '@time' => $spentTime, '@usermail' => $to]);
     }
 
     if ($newResultsNumber >= 0 && !$mailNotificationStatus) {
-      $this->logger->info('Task #@tid run completed successfully. New results from this task: [@res_number].', ['@tid' => $taskID, '@res_number' => $newResultsNumber]);
+      $this->logger->info('Task #@tid run completed successfully. New results from this task: [@res_number]. Task execution took @time sec.', ['@tid' => $taskID, '@res_number' => $newResultsNumber, '@time' => $spentTime]);
     }
 
     if ($newResultsNumber < 0) {
