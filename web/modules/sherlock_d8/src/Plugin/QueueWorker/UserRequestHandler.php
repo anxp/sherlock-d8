@@ -25,7 +25,7 @@ use Drupal\Core\Queue\RequeueException;
  * @QueueWorker(
  *   id = "pending_user_requests",
  *   title = @Translation("Pending user requests"),
- *   cron = {"time" = 40}
+ *   cron = {"time" = 120}
  * )
  */
 class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPluginInterface {
