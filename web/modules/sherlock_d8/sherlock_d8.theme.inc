@@ -27,13 +27,17 @@ function template_preprocess_scheduled_email_with_search_results(&$variables) {
 
   $noImageThumbnailPath = $base_url . '/' . $modulePath . '/templates/img/sherlock-no-image.jpg';
 
+  //Add "no image thumbnail", and break titles lines by 20 symbols for all items in new_results array:
   foreach ($variables as $key => &$value) {
-    if ($key === 'new_results' || $key === 'all_results') {
+    if ($key === 'new_results') {
       foreach ($value as &$someMarketResultsSet) {
-        for ($i = 0; $i < count($someMarketResultsSet); $i++) {
+        $marketResultsCount = count($someMarketResultsSet);
+        for ($i = 0; $i < $marketResultsCount; $i++) {
           if ($someMarketResultsSet[$i]['thumbnail'] === '') {
             $someMarketResultsSet[$i]['thumbnail'] = $noImageThumbnailPath;
           }
+
+          $someMarketResultsSet[$i]['title'] = \Drupal\sherlock_d8\CoreClasses\TextUtilities\TextUtilities::chunkSplitUnicode($someMarketResultsSet[$i]['title'], 21);
         }
       }
       unset($someMarketResultsSet);
@@ -41,3 +45,5 @@ function template_preprocess_scheduled_email_with_search_results(&$variables) {
   }
   unset($key, $value);
 }
+
+

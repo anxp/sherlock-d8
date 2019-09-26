@@ -22,4 +22,13 @@ class TextUtilities {
 
     return (substr($haystack, -$length) === $needle);
   }
+
+  public static function chunkSplitUnicode($str, $l = 76, $e = "\r\n") {
+    $tmp = array_chunk(preg_split('//u', $str, -1, PREG_SPLIT_NO_EMPTY), $l);
+    $str = '';
+    foreach ($tmp as $t) {
+      $str .= implode('', $t) . $e;
+    }
+    return $str;
+  }
 }

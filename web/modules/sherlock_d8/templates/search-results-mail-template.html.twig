@@ -14,15 +14,15 @@
   <meta charset="UTF-8">
 </head>
 <body>
-<p>Hello, {{ user_name }}! You received this email because you subscribed to receive updates on your search
+<p style="font-size: large;">Hello, {{ user_name }}! You received this email because you subscribed to receive updates on your search
   <strong>"{{ search_name }}"</strong>.</p>
 
 {% if this_is_last_message == true %}
-  <p><i>Please note, this is the last message in your current subscription. If you are still interested in tracking
-      results of your saved search, please renew subscription by visiting sherlock-ua.bid/fm-scan.</i></p>
+  <p style="font-size: large; color:red;"><i>Please note, this is the last message in your current subscription. If you are still interested in tracking
+      results of your saved search, please renew subscription by visiting <a href="http://sherlock-ua.bid/fm-scan">sherlock-ua.bid/fm-scan</a>.</i></p>
 {% endif %}
 
-<p>
+<p style="font-size: large;">
   We just checked the flea markets you are interested in:
   {% for name, results in all_results %}
     <b>{{ name }}</b>,
@@ -41,10 +41,10 @@
   <table border="0" cellspacing="5" cellpadding="5">
     <tr>
       {% for result in result_set %}
-      <td style="background-color:#EEEEEE; text-align:center" bgcolor="#DDDDDD">
-        <a href="{{ result.link }}"><img src="{{ result.thumbnail }}" width="140" alt="{{ result.title }}"></a>
-        <p><a href="{{ result.link }}">{{ result.title|slice(0, 20) }}...</a></p>
-        <p style="font-size: large; text-align: center;">{{ result.price_value }} {{ result.price_currency }}</p>
+      <td style="background-color:#EEEEEE; text-align:center" bgcolor="#EEEEEE">
+        <a href="{{ result.link }}"><img src="{{ result.thumbnail }}" width="160" alt="{{ result.title }}"></a>
+        <p><a href="{{ result.link }}">{{ result.title|slice(0, 42)|nl2br }}</a></p>
+        <p style="font-size: x-large;">{{ result.price_value }} {{ result.price_currency }}</p>
       </td>
 
       {# If end of row detected -> close current row and begin new #}
@@ -68,11 +68,11 @@
   {% for name, result_set in all_results %}
     <li><h3>{{ name }} ({{ result_set|length }}):</h3>
       {% if result_set|length == 0 %}
-        <p>No results for this market.</p>
+        <p style="font-size: large;">No results for this market.</p>
       {% endif %}
       <ul>
         {% for result in result_set %}
-          <li><a href="{{ result.link }}">{{ result.title }}</a>, {{ result.price_value }} {{ result.price_currency }}
+          <li style="font-size: large;"><a href="{{ result.link }}">{{ result.title }}</a>, {{ result.price_value }} {{ result.price_currency }}
           </li>
         {% endfor %}
       </ul>
