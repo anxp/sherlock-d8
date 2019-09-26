@@ -33,7 +33,7 @@
 <h3>New results ({{ number_of_new }}):</h3>
 
 {% for name, result_set in new_results %}
-  <h3>{{ name }} ({{ result_set|length }}):</h3>
+  <h2>{{ name }} ({{ result_set|length }}):</h2>
 
   {# Usually, number of items is not int-devides by 4. So we should calculate how many empty table cells (<td>) append after last not-empty <td>, to have valid HTML #}
   {% set complementary_cells_num = (4 - (result_set|length)%4) %}
@@ -43,7 +43,7 @@
       {% for result in result_set %}
       <td style="background-color:#EEEEEE; text-align:center" bgcolor="#EEEEEE">
         <a href="{{ result.link }}"><img src="{{ result.thumbnail }}" width="160" alt="{{ result.title }}"></a>
-        <p><a href="{{ result.link }}">{{ result.title|slice(0, 42)|nl2br }}</a></p>
+        <p style="font-size: large;"><a href="{{ result.link }}">{{ result.title|slice(0, 42)|nl2br }}</a></p>
         <p style="font-size: x-large;">{{ result.price_value }} {{ result.price_currency }}</p>
       </td>
 
@@ -66,7 +66,7 @@
 <h3>All results ({{ number_of_all }}):</h3>
 <ul style="list-style: none;">
   {% for name, result_set in all_results %}
-    <li><h3>{{ name }} ({{ result_set|length }}):</h3>
+    <li><h2>{{ name }} ({{ result_set|length }}):</h2>
       {% if result_set|length == 0 %}
         <p style="font-size: large;">No results for this market.</p>
       {% endif %}
