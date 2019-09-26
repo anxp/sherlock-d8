@@ -37,7 +37,7 @@ function template_preprocess_scheduled_email_with_search_results(&$variables) {
             $someMarketResultsSet[$i]['thumbnail'] = $noImageThumbnailPath;
           }
 
-          $someMarketResultsSet[$i]['title'] = \Drupal\sherlock_d8\CoreClasses\TextUtilities\TextUtilities::chunkSplitUnicode($someMarketResultsSet[$i]['title'], 21);
+          $someMarketResultsSet[$i]['title'] = \Drupal\sherlock_d8\CoreClasses\TextUtilities\TextUtilities::chunkSplitUnicode($someMarketResultsSet[$i]['title'], 18);
         }
       }
       unset($someMarketResultsSet);
