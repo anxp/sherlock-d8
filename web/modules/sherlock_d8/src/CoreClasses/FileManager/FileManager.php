@@ -130,8 +130,9 @@ class FileManager {
     if ($ext) {
       return $urlHash . '.' . $ext;
     } else {
-      //If no extension found in URL string, we try to extract extension from MIME Type:
-      $extDetectedByMIME = $this->extractExtensionFromMIME();
+      //If no extension found in URL string, we check it by MIME type, but file should be already loaded!
+      //If not - "unk" or fallback extension will be returned.
+      $extDetectedByMIME = $this->extractExtensionFromMIME('jpeg');
       return $urlHash . '.' . $extDetectedByMIME;
     }
   }
@@ -162,7 +163,7 @@ class FileManager {
 		return $lastPathPart;
 	}
 
-	protected function extractExtensionFromMIME(): string {
+	protected function extractExtensionFromMIME(string $fallbackExtension = null): string {
     $finfo = new finfo(FILEINFO_MIME_TYPE);
     $mimeType = $finfo->buffer($this->fileContent);
     $ext = '';
@@ -189,7 +190,7 @@ class FileManager {
         break;
 
       default:
-        $ext = 'unk'; //If no MIME Type had been matched, return unknown "unk" extension.
+        $ext = ($fallbackExtension !== null) ? $fallbackExtension : 'unk'; //If no MIME Type had been matched, return fallback or unknown "unk" extension.
     }
 
     return $ext;
