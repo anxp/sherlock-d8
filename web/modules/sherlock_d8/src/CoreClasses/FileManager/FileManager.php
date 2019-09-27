@@ -218,6 +218,15 @@ class FileManager {
 
       $this->fileObject = array_shift($loadedFilesFromDB);
       $this->isFileSaved = empty($this->fileObject) ? FALSE : TRUE;
+
+      if ($this->isFileSaved) {
+        /**
+         * @var \Psr\Log\LoggerInterface $logger
+         */
+        $logger = \Drupal::logger('sherlock_d8');
+        $logger->info('CACHE HAS BEEN USED.');
+      }
+
       return $this;
     }
     //==================================================================================================================
