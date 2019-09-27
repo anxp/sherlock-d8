@@ -23,6 +23,7 @@ class FileManager {
   protected $remoteFileUrl = null;
   protected $fileContent = null;
   protected $isFileLoaded = FALSE;
+  protected $isFileLoadedFromCache = FALSE;
   protected $isFileSaved = FALSE;
   protected $fileObject = null;
   protected $hashAlgo = 'md4'; //We use this algorithm to hash downloaded files URL while generating their local names.
@@ -71,6 +72,7 @@ class FileManager {
   public function loadRemoteFile($url, $useCache = TRUE): self {
     $this->fileObject = null; //Reset fileObject property if it has contain something from previous use.
     $this->fileContent = null; //Reset fileContent property if it has contain something from previous use.
+    $this->isFileLoadedFromCache = FALSE; //Reset isFileLoadedFromCache property if it has contain something from previous use.
 
     if (empty($url)) {
       //Empty URL catched.
@@ -79,6 +81,7 @@ class FileManager {
     } elseif ($useCache === TRUE && ($fileCachedContent = $this->checkCache($url)) !== FALSE) {
       //If flag useCache set to TRUE and cache is available -> load file from cache.
       $this->fileContent = $fileCachedContent;
+      $this->isFileLoadedFromCache = TRUE;
       //Here can be debug message "Cache for requested file exists and will be used."
     } else {
       //If cache not available or we don't want to use it -> download file from remote server:
@@ -198,7 +201,26 @@ class FileManager {
       return $this;
     }
 
-    $newFileName = $this->constructFileName($this->remoteFileUrl);
+    //Construct file name, by which we will try to load file entity:
+    $fileName = $this->constructFileName($this->remoteFileUrl);
+
+    //Construct file URI:
+    $fileUri = $this->destUri . $fileName;
+
+    //============ If file has been successfully loaded from cache, we fall into this block: ===========================
+    if ($this->isFileLoaded === TRUE && $this->isFileLoadedFromCache === TRUE) {
+      /**
+       * @var \Drupal\file\FileInterface[] $loadedFilesFromDB
+       */
+      $loadedFilesFromDB = \Drupal::entityTypeManager() //TODO: Maybe rewrite this to DI?
+        ->getStorage('file')
+        ->loadByProperties(['uri' => $fileUri]);
+
+      $this->fileObject = array_shift($loadedFilesFromDB);
+      $this->isFileSaved = empty($this->fileObject) ? FALSE : TRUE;
+      return $this;
+    }
+    //==================================================================================================================
 
     //TODO: Maybe refactor this to use dependency injection:
     try {
@@ -208,9 +230,7 @@ class FileManager {
       \Drupal::logger('sherlock_d8')->error('Can\'t create directory for temporary files (public://sherlock/img_cache). Check permissions.');
     }
 
-    $newFileUri = $this->destUri.$newFileName;
-
-    $fileObj = file_save_data($this->fileContent, $newFileUri, $replace);
+    $fileObj = file_save_data($this->fileContent, $fileUri, $replace);
 
     //If file WAS NOT successfully saved, set flag that indicates file was not saved and return from method:
     if (!$fileObj) {
