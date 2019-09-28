@@ -29,6 +29,9 @@ class FileManager {
   protected $hashAlgo = 'md4'; //We use this algorithm to hash downloaded files URL while generating their local names.
   protected $destUri = 'public://'; //A string containing the URI that the file should be copied to. This must be a stream wrapper URI.
 
+  protected static $urlKey = ''; //Something like a checksum of hostname, but we do it manually
+  protected static $remotelyDetectedExtension = '';
+
   /**
    * FileManager constructor.
    * @param string $destUri A string containing the URI, where file will be stored. This must be a stream wrapper URI.
@@ -113,7 +116,7 @@ class FileManager {
   }
 
   protected function checkCache($url) {
-    $fileName = $this->constructFileName($url);
+    $fileName = $this->constructFileName($url, TRUE);
     if ($fileName === FALSE) {return FALSE;}
 
     $fileUri = $this->destUri.$fileName;
@@ -121,7 +124,20 @@ class FileManager {
     return file_exists($fileUri) ? file_get_contents($fileUri) : FALSE;
   }
 
-  protected function constructFileName(string $url): string {
+  /**
+   * This is very smart method. It trying it's best to construct filename with extension.
+   * First, it tries to find extension from URL, if fail:
+   * Second, it tries to detect extension from loaded in memory file contents, but if file contents empty:
+   * Third, it loads remote file, detects extension from it MIME type, and save it to static property,
+   * and while hostname from which files are downloading remains the same (like https://apollo-ireland.akamaized.net:443),
+   * it will use detected extension and apply it to all filenames of files previously downloaded from this host.
+   * If hostname changed -> new file will be downloaded and new extension detected.
+   * @param string $url
+   * @param bool $allowRemoteCheck
+   * @return string - a filename in format "hashcode.ext"
+   */
+  protected function constructFileName(string $url, bool $allowRemoteCheck = FALSE): string {
+
     if (empty($url)) {return FALSE;}
 
     $ext = $this->extractExtensionFromURL($url);
@@ -130,9 +146,32 @@ class FileManager {
     if ($ext) {
       return $urlHash . '.' . $ext;
     } else {
-      //If no extension found in URL string, we check it by MIME type, but file should be already loaded!
-      //If not - "unk" or fallback extension will be returned.
-      $extDetectedByMIME = $this->extractExtensionFromMIME('jpeg');
+      //So, we can't find extension in URL, so go other way:
+      //At first, let's check if file content is already loaded into memory, so we can easily detect extension by MIME type:
+      //(If extension cannot be detected, and remote check is not allowed - "unk" or fallback extension will be returned.)
+      if (!empty($this->fileContent)) {
+        $extDetectedByMIME = $this->extractExtensionFromMIME();
+        return $urlHash . '.' . $extDetectedByMIME;
+      }
+
+      //Ok, file is not loaded, but we can try to load it from remote and save detected extension for future checks.
+      $urlParsed = parse_url($url);
+      $urlKeyCurrent = $urlParsed['scheme'] . $urlParsed['host'] . ($urlParsed['port'] ? $urlParsed['port'] : '');
+
+      //If we already detected extension on previous iteration, let's assume all other files from this host
+      //(we check host at each iteration) will have the same extension, and return it:
+      if ($urlKeyCurrent === self::$urlKey && !empty(self::$remotelyDetectedExtension)) {
+        return $urlHash . '.' . self::$remotelyDetectedExtension;
+      }
+
+      if ($allowRemoteCheck) {
+        $this->loadRemoteFile($url, FALSE); //It's important to CACHE=FALSE or we can fall into recursion.
+        self::$urlKey = $urlKeyCurrent; //Update key. This will be done only once OR if hostname changed during current runtime
+        self::$remotelyDetectedExtension = $this->extractExtensionFromMIME();
+        return $urlHash . '.' . self::$remotelyDetectedExtension;
+      }
+
+      $extDetectedByMIME = $this->extractExtensionFromMIME();
       return $urlHash . '.' . $extDetectedByMIME;
     }
   }
@@ -218,15 +257,7 @@ class FileManager {
         ->loadByProperties(['uri' => $fileUri]);
 
       $this->fileObject = array_shift($loadedFilesFromDB);
-      $this->isFileSaved = empty($this->fileObject) ? FALSE : TRUE;
-
-      if ($this->isFileSaved) {
-        /**
-         * @var \Psr\Log\LoggerInterface $logger
-         */
-        $logger = \Drupal::logger('sherlock_d8');
-        $logger->info('CACHE HAS BEEN USED.');
-      }
+      $this->isFileSaved = empty($this->fileObject) ? FALSE : TRUE; //in this case isFileSaved means "is file physically exists at this moment"
 
       return $this;
     }
