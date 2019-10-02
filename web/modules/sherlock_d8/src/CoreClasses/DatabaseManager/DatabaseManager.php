@@ -31,6 +31,10 @@ class DatabaseManager {
     $this->dbConnection = $dbConnection;
   }
 
+  public function getDrupalNativeDBC() {
+    return $this->dbConnection;
+  }
+
   public function setData($mappedData) {
     $this->mappedData = $mappedData;
     return $this;

@@ -13,7 +13,13 @@ use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 interface iSherlockCacheEntity {
   const CACHE_LIFE_HOURS = 23;
 
-  public function __construct(DatabaseManager $dbConnection, string $tableName = SHERLOCK_RESULTS_CACHE_TABLE, int $cacheLifeHours = self::CACHE_LIFE_HOURS);
+  /*
+   * Available tables for cache:
+   * SHERLOCK_CACHE_CONTENT_TABLE,
+   * SHERLOCK_CACHE_INDEX_TABLE;
+   */
+
+  public function __construct(DatabaseManager $dbConnection);
   public function load(string $urlQueryHash): array;
   public function save(string $hashAsName, array $queryUrlResults, bool $overwriteExpiredCache = TRUE): int;
   public function deleteExpired(): int;

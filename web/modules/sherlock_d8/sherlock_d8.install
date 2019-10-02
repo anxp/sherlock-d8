@@ -154,7 +154,8 @@ function sherlock_d8_schema() {
 
       'title' => [
         'description' => 'Found item title.',
-        'type' => 'text',
+        'type' => 'varchar',
+        'length' => 255,
       ],
 
       'url' => [
@@ -209,8 +210,8 @@ function sherlock_d8_schema() {
     ],
   ];
 
-  $schema[SHERLOCK_RESULTS_CACHE_TABLE] = [
-    'description' => 'Cache results while user interacting with form.',
+  $schema[SHERLOCK_CACHE_CONTENT_TABLE] = [
+    'description' => 'Short live cache. Useful when user interacts with form, or some users request same content in one time slot.',
     'fields' => [
       'id' => [
         'description' => 'The primary identifier for cached records.',
@@ -219,17 +220,62 @@ function sherlock_d8_schema() {
         'not null' => TRUE,
       ],
 
-      'url_query_hash' => [
-        'description' => 'Hash of URL query (URL combined with search keywords and params).',
-        'type' => 'char',
-        'length' => 32,
+      'url_query_id' => [
+        'description' => 'ID of corresponded search query URL this result belongs to. This field referenced to id in sherlock_cache_index.',
+        'type' => 'int',
+        'unsigned' => TRUE,
         'not null' => TRUE,
       ],
 
-      'serialized_results' => [
-        'description' => 'Serialized array with results for current URL query.',
+      'title' => [
+        'description' => 'Found item title.',
+        'type' => 'varchar',
+        'length' => 255,
+      ],
+
+      'url' => [
+        'description' => 'Found item URL.',
         'type' => 'text',
-        'size' => 'medium',
+      ],
+
+      'price' => [
+        'description' => 'Found item price. Only value, without currency symbol.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+      ],
+
+      'currency' => [
+        'description' => 'Item currency. 3-letters ID.',
+        'type' => 'char',
+        'length' => 3,
+      ],
+
+      'img_url' => [
+        'description' => 'Path to item thumbnail.',
+        'type' => 'text',
+      ],
+    ],
+
+    'primary key' => [
+      'id',
+    ],
+  ];
+
+  $schema[SHERLOCK_CACHE_INDEX_TABLE] = [
+    'description' => 'Table matches URL query hash to integer index, to speed up access.',
+    'fields' => [
+      'id' => [
+        'description' => 'The primary identifier of index records.',
+        'type' => 'serial', //Because we want this field to be autoincremented.
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ],
+
+      'url_query_hash' => [
+        'description' => 'Hash of URL query.',
+        'type' => 'char',
+        'length' => 32,
+        'default' => 'just_a_32_symbols_placeholder_ju',
       ],
 
       'created' => [

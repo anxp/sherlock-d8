@@ -3,7 +3,8 @@
 const SHERLOCK_MAIN_TABLE = 'sherlock_user_input'; //Here we will store searches (serialized user-filled forms and their values)
 const SHERLOCK_TASKS_TABLE = 'sherlock_tasklist'; //Table for ACTIVE tasks
 const SHERLOCK_RESULTS_TABLE = 'sherlock_results'; //Table for results. We will store only actual results here, deleting links to disappeared from fleamarket items.
-const SHERLOCK_RESULTS_CACHE_TABLE = 'sherlock_results_cache'; //Table for caching search results. To minimize waiting time and load on external resources while user interacting with form.
+const SHERLOCK_CACHE_CONTENT_TABLE = 'sherlock_cache_content'; //Table for caching search results. To minimize waiting time and load on external resources while user interacting with form.
+const SHERLOCK_CACHE_INDEX_TABLE = 'sherlock_cache_index';
 const SHERLOCK_SEARCHNAME_HASH_ALGO = 'md5';
 
 use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
@@ -119,14 +120,11 @@ function sherlock_d8_cron() {
   //===================== SECOND STEP: ADD ACTUAL TASKS TO QUEUE (if they was not processed during last 24h) ===========
   $queue = \Drupal::queue('pending_user_requests');
 
-  //TODO: Upgrade my wrapper (DatabaseManager) to be able to do join(), so we will use only DatabaseManager here.
-  $dbc = \Drupal::database();
-
-  $getTasksQuery = $dbc->select(SHERLOCK_TASKS_TABLE, 'tt');
+  $getTasksQuery = $dbConnection->getDrupalNativeDBC()->select(SHERLOCK_TASKS_TABLE, 'tt');
   $getTasksQuery->join(SHERLOCK_MAIN_TABLE, 'mt', 'tt.id = mt.task_id');
   $getTasksQuery->addField('tt', 'id', 'task_id');
   $getTasksQuery->addField('mt', 'uid', 'user_id');
-  $getTasksQuery->condition('tt.last_checked', time() - 24*60*60, '<=');
+  $getTasksQuery->condition('tt.last_checked', time() - 24 * 60 * 60, '<=');
   $result = $getTasksQuery->execute();
 
   foreach ($result as $record) {
