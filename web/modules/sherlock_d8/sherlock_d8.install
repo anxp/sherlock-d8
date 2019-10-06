@@ -233,26 +233,40 @@ function sherlock_d8_schema() {
         'length' => 255,
       ],
 
-      'url' => [
+      'link' => [
         'description' => 'Found item URL.',
         'type' => 'text',
       ],
 
-      'price' => [
+      'price_value' => [
         'description' => 'Found item price. Only value, without currency symbol.',
         'type' => 'int',
         'unsigned' => TRUE,
       ],
 
-      'currency' => [
+      'price_currency' => [
         'description' => 'Item currency. 3-letters ID.',
         'type' => 'char',
         'length' => 3,
       ],
 
-      'img_url' => [
+      'thumbnail' => [
         'description' => 'Path to item thumbnail.',
         'type' => 'text',
+      ],
+
+      'url_hash' => [
+        'description' => 'URL hash.',
+        'type' => 'char',
+        'length' => 32,
+        'default' => 'just_a_32_symbols_placeholder_ju',
+      ],
+
+      'url_price_hash' => [
+        'description' => 'URL+Price hash.',
+        'type' => 'char',
+        'length' => 32,
+        'default' => 'just_a_32_symbols_placeholder_ju',
       ],
     ],
 

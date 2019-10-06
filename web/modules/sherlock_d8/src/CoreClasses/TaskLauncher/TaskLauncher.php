@@ -91,19 +91,13 @@ class TaskLauncher implements iTaskLauncher {
 
       //Check and filter gotten results. We'll split results into 2 arrays -
       //$currentTask_ACTUAL_results (all results gotten from remote) and $currentTask_NEW_results (results, which are not exist in our DB):
-      foreach ($currentMarketResults as $numericKey => &$oneResult) {
+      foreach ($currentMarketResults as $numericKey => $oneResult) {
+
         //Store result hashes in separate arrays:
-        $urlHash = hash(SHERLOCK_SEARCHNAME_HASH_ALGO, $oneResult['link']);
-        $urlPriceHash = hash(SHERLOCK_SEARCHNAME_HASH_ALGO, $oneResult['link'] . $oneResult['price_value']);
+        $url_Hashpool[] = $oneResult['url_hash'];
+        $urlprice_Hashpool[] = $oneResult['url_price_hash'];
 
-        $url_Hashpool[] = $urlHash;
-        $urlprice_Hashpool[] = $urlPriceHash;
-
-        //These elements with hashes didn't exist before, we add them here dynamically:
-        $oneResult['url_hash'] = $urlHash;
-        $oneResult['url_price_hash'] = $urlPriceHash;
-
-        if(!in_array($urlPriceHash, $hashesOfAlreadyExistingRecords)) {
+        if(!in_array($oneResult['url_price_hash'], $hashesOfAlreadyExistingRecords)) {
           //We've caught NEW item! Let's store it in array for new items only:
           $currentTask_NEW_results[$marketID][] = $oneResult;
         }

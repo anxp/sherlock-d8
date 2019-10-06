@@ -11,6 +11,7 @@ use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockCacheEntity\SherlockCacheEntity;
+use Drupal\sherlock_d8\CoreClasses\SherlockCacheEntity\iSherlockCacheEntity;
 
 function sherlock_d8_theme($existing, $type, $theme, $path) {
   return [
@@ -133,9 +134,9 @@ function sherlock_d8_cron() {
 
   //===================== THIRD STEP: CLEAN EXPIRED CACHE ==============================================================
   $sherlockCache = new SherlockCacheEntity($dbConnection);
-  $cacheEntriesDeleted = $sherlockCache->deleteExpired();
+  $cacheEntriesDeleted = $sherlockCache->deleteForsaken();
   if ($cacheEntriesDeleted) {
-    $logger->info('Deleted [@num] expired cache entries from "sherlock_results_cache" table', ['@num' => $cacheEntriesDeleted]);
+    $logger->info('Deleted [@num] forsaken cache entries. Cache considered forsaken if it has not been touched more than ' . iSherlockCacheEntity::CONSIDER_CACHE_FORSAKEN_HOURS . ' hours.', ['@num' => $cacheEntriesDeleted]);
   }
 }
 

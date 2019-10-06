@@ -53,6 +53,9 @@ class MarketFetchController extends ControllerBase {
         $sniperObject = new $objName($urlsSetForGivenMarket[$i], 5); //Create new object of somemarket_ItemSniper.
         $oneQueryResult = $sniperObject->grabItems();
         unset($sniperObject);
+
+        $this->calculateAndInjectChecksums($oneQueryResult); //Upgrade incoming data with important checksums
+
         $this->sherlockCache->save($hashAsName, $oneQueryResult);
       }
 
@@ -113,5 +116,14 @@ class MarketFetchController extends ControllerBase {
 
     return $response;
 
+  }
+
+  protected function calculateAndInjectChecksums(array &$data) {
+    $elementsNum = count($data);
+
+    for ($i = 0; $i < $elementsNum; $i++) {
+      $data[$i]['url_hash'] = hash(SHERLOCK_SEARCHNAME_HASH_ALGO, $data[$i]['link']);
+      $data[$i]['url_price_hash'] = hash(SHERLOCK_SEARCHNAME_HASH_ALGO, $data[$i]['link'] . $data[$i]['price_value']);
+    }
   }
 }

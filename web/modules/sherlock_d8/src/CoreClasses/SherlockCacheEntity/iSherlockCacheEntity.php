@@ -11,7 +11,8 @@ namespace Drupal\sherlock_d8\CoreClasses\SherlockCacheEntity;
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 
 interface iSherlockCacheEntity {
-  const CACHE_LIFE_HOURS = 23;
+  const CACHE_LIFE_HOURS = 3;
+  const CONSIDER_CACHE_FORSAKEN_HOURS = 24 * 7; //1 week
 
   /*
    * Available tables for cache:
@@ -21,6 +22,6 @@ interface iSherlockCacheEntity {
 
   public function __construct(DatabaseManager $dbConnection);
   public function load(string $urlQueryHash): array;
-  public function save(string $hashAsName, array $queryUrlResults, bool $overwriteExpiredCache = TRUE): int;
-  public function deleteExpired(): int;
+  public function save(string $urlQueryHash, array $queryUrlResults, bool $overwriteExpiredCache = TRUE): int;
+  public function deleteForsaken(): int;
 }

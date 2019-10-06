@@ -102,7 +102,7 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
         $oneRecord['fmkt_id'] = $marketID;
 
         //Item title:
-        $oneRecord['title'] = $marketResults[$i]['title'];
+        $oneRecord['title'] = mb_substr($marketResults[$i]['title'], 0, 255); //Trim to 255 symbols, if it actually longer
 
         //Item URL:
         $oneRecord['url'] = $marketResults[$i]['link'];
@@ -136,7 +136,7 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
     }
     unset($marketID, $marketResults);
 
-    $rowsInsertedTotal = $this->fastInsert(SHERLOCK_RESULTS_TABLE, $insertData);
+    $rowsInsertedTotal = $this->bulkInsert(SHERLOCK_RESULTS_TABLE, $insertData);
 
     return $rowsInsertedTotal;
   }

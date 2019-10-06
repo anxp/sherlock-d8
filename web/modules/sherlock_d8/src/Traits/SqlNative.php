@@ -16,7 +16,7 @@ trait SqlNative {
 
   abstract protected function getDbConnection(): DatabaseManager;
 
-  public function fastInsert(string $tableName, array $insertData): int {
+  public function bulkInsert(string $tableName, array $insertData): int {
     //Dynamically build INSERT query with placeholders. We separately build $queryPlaceholders, which contains ONLY placeholders, and
     //$queryData, which is array of associative arrays with placeholders names and their values, as discussed here -
     //https://stackoverflow.com/questions/15069962/php-pdo-insert-batch-multiple-rows-with-placeholders
