@@ -7,17 +7,17 @@
  */
 namespace Drupal\sherlock_d8\CoreClasses\TaskLauncher;
 
+use Psr\Log\LoggerInterface;
+
 use Drupal\sherlock_d8\CoreClasses\SherlockMailer\SherlockMailer;
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 use Drupal\sherlock_d8\Controller\MarketFetchController;
-
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockSearchEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockTaskEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity;
 use Drupal\sherlock_d8\CoreClasses\MarketReference\MarketReference;
 
-use Drupal\sherlock_d8\CoreClasses\Exceptions\UnexpectedProcessInterruption;
 use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 
 class TaskLauncher implements iTaskLauncher {
@@ -39,11 +39,17 @@ class TaskLauncher implements iTaskLauncher {
   private $taskID = 0;
   private $mailSentSuccessfully = FALSE;
 
-  public function __construct(SherlockMailer $sherlockMailer, DatabaseManager $dbConnection, MarketFetchController $marketFetchController, SherlockTrouvailleEntity $trouvailleEntity) {
+  /**
+   * @var LoggerInterface $logger
+   */
+  protected $logger = null;
+
+  public function __construct(SherlockMailer $sherlockMailer, DatabaseManager $dbConnection, MarketFetchController $marketFetchController, SherlockTrouvailleEntity $trouvailleEntity, LoggerInterface $logger) {
     $this->sherlockMailer = $sherlockMailer;
     $this->dbConnection = $dbConnection;
     $this->marketFetchController = $marketFetchController;
     $this->trouvailleEntity = $trouvailleEntity;
+    $this->logger = $logger;
   }
 
   /**
@@ -51,7 +57,7 @@ class TaskLauncher implements iTaskLauncher {
    * @param int $taskID
    * @param bool $sendEmailNotification
    * @return int
-   * @throws UnexpectedProcessInterruption | InvalidInputData
+   * @throws InvalidInputData
    */
   public function runTask(int $userID, int $taskID, $sendEmailNotification = TRUE): int {
 
@@ -119,22 +125,36 @@ class TaskLauncher implements iTaskLauncher {
     }
     //-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*
 
-    //If mail sent successfully, OR we didn't requested to send email:
-    if ($this->mailSentSuccessfully === TRUE || $sendEmailNotification === FALSE) {
-      //Select all records with current taskID (already existing in DB at the moment) and set them IS_NEW flag to 0/FALSE:
-      $this->trouvailleEntity->markAsNotNew($taskID);
+    //Either mail sent successfully, OR not ->
+    //we should finish current task (mark EXISTING results as old, and insert new (automatically marked as new)):
 
-      //FINALLY, insert new records:
-      $rowsInsertedNum = $this->trouvailleEntity->insertMultiple($userID, $taskID, $currentTask_NEW_results);
+    //Select all records with current taskID (already existing in DB at the moment) and set them IS_NEW flag to 0/FALSE:
+    $this->trouvailleEntity->markAsNotNew($taskID);
 
-      //Update last_checked timestamp, so will not touch this task anymore next 24h:
-      $this->taskEntity->setLastChecked(time());
-      $this->taskEntity->save();
+    //FINALLY, insert new records:
+    $rowsInsertedNum = $this->trouvailleEntity->insertMultiple($userID, $taskID, $currentTask_NEW_results);
 
-      return $rowsInsertedNum;
-    } else {
-      throw new UnexpectedProcessInterruption('Requested notification email cannot be send, so we can\'t properly complete task executing process.');
+    //Update last_checked timestamp, so will not touch this task anymore next 24h:
+    $this->taskEntity->setLastChecked(time());
+    $this->taskEntity->save();
+
+    //Log this event to watchdog:
+    $userAccount = \Drupal\user\Entity\User::load($userID);
+    $to = $userAccount->getEmail();
+
+    if ($rowsInsertedNum >= 0 && $this->mailSentSuccessfully) {
+      $this->logger->info('Task #@tid run completed successfully. New results from this task: [@res_number]. Mail notification sent to @usermail.', ['@tid' => $taskID, '@res_number' => $rowsInsertedNum, '@usermail' => $to,]);
     }
+
+    if ($rowsInsertedNum >= 0 && $sendEmailNotification === FALSE) {
+      $this->logger->info('Task #@tid run completed successfully. New results from this task: [@res_number]. Mail notification HAS NOT been requested.', ['@tid' => $taskID, '@res_number' => $rowsInsertedNum,]);
+    }
+
+    if ($rowsInsertedNum >= 0 && $sendEmailNotification === TRUE && $this->mailSentSuccessfully === FALSE) {
+      $this->logger->error('Task #@tid run completed successfully. New results from this task: [@res_number]. But REQUESTED mail notification HAS NOT been sent (to @usermail).', ['@tid' => $taskID, '@res_number' => $rowsInsertedNum, '@usermail' => $to,]);
+    }
+
+    return $rowsInsertedNum;
   }
 
   protected function sendMailNotification(array $newResults, array $allResults): bool {

@@ -15,9 +15,13 @@ services:
     class: Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity
     arguments: ['@sherlock_d8.database_manager']
 
+  logger.channel.sherlock_d8:
+    parent: logger.channel_base
+    arguments: ['sherlock_d8']
+
   sherlock_d8.task_launcher:
     class: Drupal\sherlock_d8\CoreClasses\TaskLauncher\TaskLauncher
-    arguments: ['@sherlock_d8.mailer', '@sherlock_d8.database_manager', '@sherlock_d8.market_fetch_controller', '@sherlock_d8.trouvaille_entity']
+    arguments: ['@sherlock_d8.mailer', '@sherlock_d8.database_manager', '@sherlock_d8.market_fetch_controller', '@sherlock_d8.trouvaille_entity', '@logger.channel.sherlock_d8']
 
   sherlock_d8.cache_entity:
     class: Drupal\sherlock_d8\CoreClasses\SherlockCacheEntity\SherlockCacheEntity

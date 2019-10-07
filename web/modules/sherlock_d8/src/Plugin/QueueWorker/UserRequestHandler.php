@@ -18,8 +18,8 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockTaskEntity;
 
-use Drupal\sherlock_d8\CoreClasses\Exceptions\UnexpectedProcessInterruption;
-use Drupal\Core\Queue\RequeueException;
+//use Drupal\sherlock_d8\CoreClasses\Exceptions\UnexpectedProcessInterruption;
+//use Drupal\Core\Queue\RequeueException;
 
 /**
  * @QueueWorker(
@@ -99,41 +99,12 @@ class UserRequestHandler extends QueueWorkerBase implements ContainerFactoryPlug
     $userID = $data['user_id'];
     $taskID = $data['task_id'];
 
-    $newResultsNumber = -1;
     $timeStampBeforeExecution = time();
-    $spentTime = -1;
 
-    try {
-      $newResultsNumber = $this->taskLauncher->runTask($userID, $taskID, TRUE);
-      $spentTime = time() - $timeStampBeforeExecution;
-    } catch (UnexpectedProcessInterruption $exception) {
-      $problemFilePath = $exception->getFile();
-      $lineNumber = $exception->getLine();
-      $description = $exception->getMessage();
+    $newResultsNumber = $this->taskLauncher->runTask($userID, $taskID, TRUE);
 
-      $this->logger->error('Problem file: ' . $problemFilePath . '<br>' . 'Line number: ' . $lineNumber . '<br>' . 'Error description: ' . $description);
+    $spentTime = time() - $timeStampBeforeExecution;
 
-      unset($problemFilePath, $lineNumber, $description);
-
-      //And re-throw other exception in order to requeue current task:
-      throw new RequeueException('Task cannot be finished, requeue initiated.');
-    }
-
-    $mailNotificationStatus = $this->taskLauncher->getMailNotificationStatus();
-
-    $userAccount = \Drupal\user\Entity\User::load($userID);
-    $to = $userAccount->getEmail();
-
-    if ($newResultsNumber >= 0 && $mailNotificationStatus) {
-      $this->logger->info('Task #@tid run completed successfully. New results from this task: [@res_number]. Task execution took @time sec. Mail notification sent to @usermail.', ['@tid' => $taskID, '@res_number' => $newResultsNumber, '@time' => $spentTime, '@usermail' => $to]);
-    }
-
-    if ($newResultsNumber >= 0 && !$mailNotificationStatus) {
-      $this->logger->info('Task #@tid run completed successfully. New results from this task: [@res_number]. Task execution took @time sec.', ['@tid' => $taskID, '@res_number' => $newResultsNumber, '@time' => $spentTime]);
-    }
-
-    if ($newResultsNumber < 0) {
-      $this->logger->error('Error occurred on executing task #@tid. Process interrupted. Check thrown exceptions too.', ['@tid' => $taskID]);
-    }
+    $this->logger->info('Task #@tid executed in @time sec. as queue item. Number of new results for this task: [@newres]. Owner of task user #@uid.', ['@tid' => $taskID, '@newres' => $newResultsNumber, '@uid' => $userID, '@time' => $spentTime]);
   }
 }
