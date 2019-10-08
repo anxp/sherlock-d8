@@ -8,7 +8,9 @@
 
 namespace Drupal\sherlock_d8\CoreClasses\SherlockEntity;
 
+use Drupal\Core\Database\Database;
 use Drupal\Core\Form\FormStateInterface;
+
 use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 
 class SherlockSearchEntity extends SherlockEntity implements iSherlockSearchEntity {
@@ -125,25 +127,26 @@ class SherlockSearchEntity extends SherlockEntity implements iSherlockSearchEnti
   }
 
   public function delete(int $searchID, bool $ignoreOwnership = FALSE): bool {
-    $condition['id'] = $searchID;
+    $numRowsDeleted = 0;
 
     if ($ignoreOwnership === FALSE) {
-      $condition['uid'] = self::$uid;
+      $userID = self::$uid;
+
+      $numRowsDeleted = self::$dbConnection->getDrupalNativeDBC()->query(
+        'DELETE sui, stl FROM {sherlock_user_input} AS sui LEFT JOIN {sherlock_tasklist} AS stl ON sui.task_id = stl.id WHERE uid = :userID AND sui.id = :searchID;',
+        [':userID' => $userID, ':searchID' => $searchID],
+        ['return' => Database::RETURN_AFFECTED,]
+      );
+
+    } else {
+
+      $numRowsDeleted = self::$dbConnection->getDrupalNativeDBC()->query(
+        'DELETE sui, stl FROM {sherlock_user_input} AS sui LEFT JOIN {sherlock_tasklist} AS stl ON sui.task_id = stl.id WHERE sui.id = :searchID;',
+        [':searchID' => $searchID],
+        ['return' => Database::RETURN_AFFECTED,]
+      );
+
     }
-
-    //First, we need to check if search has attached task to it, and if it does - delete this task first:
-    $requestedSearch = self::$dbConnection->selectTable(SHERLOCK_MAIN_TABLE)->selectRecords($condition, 'id', TRUE);
-    $requestedSearch = array_shift($requestedSearch);
-    $taskID = intval($requestedSearch['task_id']);
-
-    if ($taskID > 0) {
-      //We found attached task, so let's delete it:
-      $attachedTaskObject = new SherlockTaskEntity(self::$uid, self::$dbConnection);
-      $attachedTaskObject->delete($taskID, $ignoreOwnership);
-    }
-
-    //Second, delete search record from main table:
-    $numRowsDeleted = self::$dbConnection->selectTable(SHERLOCK_MAIN_TABLE)->deleteRecords($condition);
 
     //Set flag, which indicates, has record been deleted or not:
     self::$searchDeleted = $numRowsDeleted > 0 ? TRUE : FALSE;
