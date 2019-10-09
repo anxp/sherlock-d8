@@ -38,7 +38,7 @@ class SherlockTaskEntity extends SherlockEntity implements iSherlockTaskEntity {
       ];
 
       $loadAttempt = self::$dbConnection->selectTable(SHERLOCK_MAIN_TABLE)->selectRecords($condition, 'id', TRUE);
-      $this->id = !empty($loadAttempt) ? array_shift($loadAttempt)['task_id'] : 0;
+      $this->id = !empty($loadAttempt) ? intval(array_shift($loadAttempt)['task_id']) : 0;
 
       unset($loadAttempt);
     }

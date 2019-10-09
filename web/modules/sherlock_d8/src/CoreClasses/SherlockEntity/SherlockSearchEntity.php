@@ -118,7 +118,7 @@ class SherlockSearchEntity extends SherlockEntity implements iSherlockSearchEnti
 
     //Initialize some object properties, if save has been successful:
     if ($recordID) {
-      $this->id = $recordID;
+      $this->id = intval($recordID);
       $this->modified = time();
       $this->task_id = $taskID;
     }
