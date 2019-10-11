@@ -59,7 +59,7 @@ class TaskLauncher implements iTaskLauncher {
    * @return int
    * @throws InvalidInputData
    */
-  public function runTask(int $userID, int $taskID, $sendEmailNotification = TRUE): int {
+  public function runTask(int $userID, int $taskID, bool $sendEmailNotification = TRUE): int {
 
     $this->taskEntity = SherlockEntity::getInstance('TASK', $userID, $this->dbConnection);
     $this->taskEntity->load($taskID);

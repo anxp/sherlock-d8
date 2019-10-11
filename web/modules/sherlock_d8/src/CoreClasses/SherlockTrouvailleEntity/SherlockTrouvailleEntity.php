@@ -83,7 +83,7 @@ class SherlockTrouvailleEntity implements iSherlockTrouvailleEntity {
     return $rowsUpdated;
   }
 
-  public function getRecordsForSpecifiedTask($taskID, $keyResultBy): array {
+  public function getRecordsForSpecifiedTask(int $taskID, string $keyResultBy): array {
     $selectedRecords = $this->dbConnection->selectTable(SHERLOCK_RESULTS_TABLE)->selectRecords(['task_id' => $taskID], $keyResultBy);
 
     return $selectedRecords;
