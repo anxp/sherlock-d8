@@ -7,21 +7,23 @@
  */
 namespace Drupal\sherlock_d8\Form;
 
+use Symfony\Component\DependencyInjection\ContainerInterface;
+
 use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\ReplaceCommand;
+use Drupal\Core\Extension\ModuleHandlerInterface;
+
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockSearchEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockTaskEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
-use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
 use Drupal\sherlock_d8\CoreClasses\MarketReference\MarketReference;
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 use Drupal\sherlock_d8\CoreClasses\TaskLauncher\TaskLauncher;
+use Drupal\sherlock_d8\CoreClasses\MessageCollector\MessageCollector;
 
-use Drupal\sherlock_d8\CoreClasses\Exceptions\UnexpectedProcessInterruption;
 use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 
 class SherlockMainForm extends FormBase {
@@ -42,6 +44,11 @@ class SherlockMainForm extends FormBase {
    */
   protected $taskLauncher = null;
 
+  /**
+   * @var MessageCollector $messageCollector
+   */
+  protected $messageCollector = null;
+
   //ID of loaded saved search
   protected $recordID = null;
 
@@ -55,6 +62,7 @@ class SherlockMainForm extends FormBase {
     $this->dbConnection = $dbConnection;
     $this->moduleHandler = $moduleHandler;
     $this->taskLauncher = $taskLauncher;
+    $this->messageCollector = MessageCollector::getInstance();
   }
 
   public static function create(ContainerInterface $container) {
@@ -969,7 +977,6 @@ class SherlockMainForm extends FormBase {
     // Check fleamarkets again (actually, load results from cache), and, optionally, send first email notification:
 
     $isSubscribeForUpdatesChecked = intval($form_state->getValue(['save_search_block', 'subscribe_to_updates']));
-    $additionalStatusMessages = [];
     
     if ($isSubscribeForUpdatesChecked) {
       /**
@@ -986,69 +993,57 @@ class SherlockMainForm extends FormBase {
 
         $rowsInsertedNum = $this->taskLauncher->runTask($this->currentUser()->id(), $taskID, $sendMail);
 
-      } catch (UnexpectedProcessInterruption $processInterruption) {
-
-        $additionalStatusMessages[] = [
-          'message' => $this->t('For unknown reasons requested mail cannot be sent, please try again later.'),
-          'type' => 'error'
-        ];
-
-        $this->logThisIncident($processInterruption);
-
       } catch (InvalidInputData $invalidInputData) {
 
-        $additionalStatusMessages[] = [
-          'message' => $this->t('Cannot proceed because of incompatible data format. Please, contact support for this incident.'),
-          'type' => 'error'
-        ];
+        $this->messageCollector->addMessage($this->t('Cannot proceed because of incompatible data format. Please, contact support for this incident.'), 'error', 'H');
 
         $this->logThisIncident($invalidInputData);
       }
 
       if ($rowsInsertedNum >= 0) {
-        $additionalStatusMessages[] = [
-          'message' => $this->t('Current search results successfully saved (synced) to database.'),
-          'type' => 'status',
-        ];
+        $this->messageCollector->addMessage(t('Current search results successfully saved/synced to database.'), 'status', 'L');
       }
 
       if ($this->taskLauncher->getMailNotificationStatus()) {
-        $additionalStatusMessages[] = [
-          'message' => $this->t('Also, search results just have been sent to your email. If you don\'t see the letter in the inbox, please, check spam folder.'),
-          'type' => 'status'
-        ];
+        $this->messageCollector->addMessage(
+          t('Search results just have been sent to your email (@email). If you don\'t see the letter in the inbox, please, check spam folder.',
+            ['@email' => $this->currentUser()->getEmail(),]), 'status', 'H'
+        );
       }
     }
 
-    $this->displayNotifications($additionalStatusMessages);
+    $this->displayNotifications();
   }
 
-  public function displayNotifications($additionalStatusMessages = []) {
+  public function displayNotifications() {
+
     if (SherlockEntity::isSearchCreated()) {
-      $this->messenger()->addStatus($this->t('Search settings and parameters have been successfully saved.'));
+      $this->messageCollector->addMessage(t('Search settings and parameters have been successfully saved.'), 'status');
     }
 
     if (SherlockEntity::isSearchUpdated()) {
-      $this->messenger()->addStatus($this->t('Existing search has been successfully updated.'));
+      $this->messageCollector->addMessage(t('Existing search has been successfully updated.'), 'status');
     }
 
     if (SherlockEntity::isSearchDeleted()) {
-      $this->messenger()->addStatus($this->t('Search has been successfully deleted.'));
+      $this->messageCollector->addMessage(t('Search has been successfully deleted.'), 'status');
     }
 
     if (SherlockEntity::isTaskCreated()) {
-      $this->messenger()->addStatus($this->t('New task has been successfully added to schedule.'));
+      $this->messageCollector->addMessage(t('New task has been successfully added to schedule.'), 'status');
     }
 
     if (SherlockEntity::isTaskUpdated()) {
-      $this->messenger()->addStatus($this->t('Existing task has been successfully updated.'));
+      $this->messageCollector->addMessage(t('Existing task has been successfully updated.'), 'status');
     }
 
     if (SherlockEntity::isTaskDeleted()) {
-      $this->messenger()->addStatus($this->t('Scheduled task has been successfully deleted.'));
+      $this->messageCollector->addMessage(t('Scheduled task has been successfully deleted.'), 'status');
     }
 
-    foreach ($additionalStatusMessages as $messageBundle) {
+    $messages = $this->messageCollector->getMessagesSorted();
+
+    foreach ($messages as $messageBundle) {
       if (!isset($messageBundle['type']) || !isset($messageBundle['message'])) {continue;}
 
       switch (TRUE) {
