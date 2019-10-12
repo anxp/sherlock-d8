@@ -37,13 +37,6 @@ abstract class SherlockEntity implements iSherlockEntity {
   protected static $taskUpdated = FALSE;
   protected static $taskDeleted = FALSE;
 
-  /**
-   * This method instantiates object of needed class, depending on $entityType argument.
-   * @param string $entityType - type of "entity" to handle. Possible values: TASK || SEARCH. This is not entity in Drupal terminology, and maybe will be refactored to one.
-   * @param int $userID
-   * @param DatabaseManager $dbConnection
-   * @return SherlockEntity
-   */
   static public function getInstance(string $entityType, int $userID, DatabaseManager $dbConnection): iSherlockEntity {
     switch ($entityType) {
       case ('TASK'):

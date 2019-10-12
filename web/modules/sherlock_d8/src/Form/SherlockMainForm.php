@@ -57,12 +57,13 @@ class SherlockMainForm extends FormBase {
    * @param \Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager $dbConnection
    * @param ModuleHandlerInterface $moduleHandler
    * @param TaskLauncher $taskLauncher
+   * @param MessageCollector $messageCollector
    */
-  public function __construct(DatabaseManager $dbConnection, ModuleHandlerInterface $moduleHandler, TaskLauncher $taskLauncher) {
+  public function __construct(DatabaseManager $dbConnection, ModuleHandlerInterface $moduleHandler, TaskLauncher $taskLauncher, MessageCollector $messageCollector) {
     $this->dbConnection = $dbConnection;
     $this->moduleHandler = $moduleHandler;
     $this->taskLauncher = $taskLauncher;
-    $this->messageCollector = MessageCollector::getInstance();
+    $this->messageCollector = $messageCollector;
   }
 
   public static function create(ContainerInterface $container) {
@@ -81,7 +82,12 @@ class SherlockMainForm extends FormBase {
      */
     $taskLauncher = $container->get('sherlock_d8.task_launcher');
 
-    return new static($dbConnection, $moduleHandler, $taskLauncher);
+    /**
+     * @var MessageCollector $messageCollector
+     */
+    $messageCollector = $container->get('sherlock_d8.message_collector');
+
+    return new static($dbConnection, $moduleHandler, $taskLauncher, $messageCollector);
   }
 
   public function getFormId() {
@@ -730,8 +736,9 @@ class SherlockMainForm extends FormBase {
       $searchObject = SherlockEntity::getInstance('SEARCH', $currentUserId, $this->dbConnection);
       $searchObject->delete($recordIdToDelete);
 
-      $this->displayNotifications();
-      SherlockEntity::resetFlags();
+      $this->addMessagesToCollector();
+
+      $this->messageCollector->msgCollectorObject()->displayAllMessages();
 
       $form_state->setRebuild(FALSE);
 
@@ -974,6 +981,8 @@ class SherlockMainForm extends FormBase {
     $searchEntity->fillObjectWithFormData($form_state);
     $searchEntity->save();
 
+    $this->addMessagesToCollector();
+
     // Check fleamarkets again (actually, load results from cache), and, optionally, send first email notification:
 
     $isSubscribeForUpdatesChecked = intval($form_state->getValue(['save_search_block', 'subscribe_to_updates']));
@@ -995,67 +1004,60 @@ class SherlockMainForm extends FormBase {
 
       } catch (InvalidInputData $invalidInputData) {
 
-        $this->messageCollector->addMessage($this->t('Cannot proceed because of incompatible data format. Please, contact support for this incident.'), 'error', 'H');
+        $this->messageCollector->msgCollectorObject()
+          ->addMessage($this->t('Cannot proceed because of incompatible data format. Please, contact support for this incident.'), 'error', 'H');
 
         $this->logThisIncident($invalidInputData);
       }
 
       if ($rowsInsertedNum >= 0) {
-        $this->messageCollector->addMessage(t('Current search results successfully saved/synced to database.'), 'status', 'L');
+        $this->messageCollector->msgCollectorObject()
+          ->addMessage(t('Current search results successfully saved/synced to database.'), 'status', 'L');
       }
 
       if ($this->taskLauncher->getMailNotificationStatus()) {
-        $this->messageCollector->addMessage(
-          t('Search results just have been sent to your email (@email). If you don\'t see the letter in the inbox, please, check spam folder.',
+        $this->messageCollector->msgCollectorObject()
+          ->addMessage(t('Search results just have been sent to your email (@email). If you don\'t see the letter in the inbox, please, check spam folder.',
             ['@email' => $this->currentUser()->getEmail(),]), 'status', 'H'
         );
       }
     }
 
-    $this->displayNotifications();
+    $this->messageCollector->msgCollectorObject()->displayAllMessages();
   }
 
-  public function displayNotifications() {
-
+  protected function addMessagesToCollector() {
     if (SherlockEntity::isSearchCreated()) {
-      $this->messageCollector->addMessage(t('Search settings and parameters have been successfully saved.'), 'status');
+      $this->messageCollector->msgCollectorObject()
+        ->addMessage(t(SherlockEntity::SHERLOCK_SEARCH_SAVED_NOTIFICATION), 'status', 'H');
     }
 
     if (SherlockEntity::isSearchUpdated()) {
-      $this->messageCollector->addMessage(t('Existing search has been successfully updated.'), 'status');
+      $this->messageCollector->msgCollectorObject()
+        ->addMessage(t(SherlockEntity::SHERLOCK_SEARCH_UPDATED_NOTIFICATION), 'status');
     }
 
     if (SherlockEntity::isSearchDeleted()) {
-      $this->messageCollector->addMessage(t('Search has been successfully deleted.'), 'status');
+      $this->messageCollector->msgCollectorObject()
+        ->addMessage(t(SherlockEntity::SHERLOCK_SEARCH_DELETED_NOTIFICATION), 'status');
     }
 
     if (SherlockEntity::isTaskCreated()) {
-      $this->messageCollector->addMessage(t('New task has been successfully added to schedule.'), 'status');
+      $this->messageCollector->msgCollectorObject()
+        ->addMessage(t(SherlockEntity::SHERLOCK_TASK_SAVED_NOTIFICATION), 'status');
     }
 
     if (SherlockEntity::isTaskUpdated()) {
-      $this->messageCollector->addMessage(t('Existing task has been successfully updated.'), 'status');
+      $this->messageCollector->msgCollectorObject()
+        ->addMessage(t(SherlockEntity::SHERLOCK_TASK_UPDATED_NOTIFICATION), 'status');
     }
 
     if (SherlockEntity::isTaskDeleted()) {
-      $this->messageCollector->addMessage(t('Scheduled task has been successfully deleted.'), 'status');
+      $this->messageCollector->msgCollectorObject()
+        ->addMessage(t(SherlockEntity::SHERLOCK_TASK_DELETED_NOTIFICATION), 'status');
     }
 
-    $messages = $this->messageCollector->getMessagesSorted();
-
-    foreach ($messages as $messageBundle) {
-      if (!isset($messageBundle['type']) || !isset($messageBundle['message'])) {continue;}
-
-      switch (TRUE) {
-        case ($messageBundle['type'] === 'status'):
-          $this->messenger()->addStatus($messageBundle['message']);
-          break;
-
-        case ($messageBundle['type'] === 'error'):
-          $this->messenger()->addError($messageBundle['message']);
-          break;
-      }
-    }
+    SherlockEntity::resetFlags();
   }
 
   public function constructorBlockAjaxReturn(array &$form, FormStateInterface $form_state) {

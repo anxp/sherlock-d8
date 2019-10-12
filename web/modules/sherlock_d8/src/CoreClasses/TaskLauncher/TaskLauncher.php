@@ -17,6 +17,7 @@ use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockSearchEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockTaskEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity;
 use Drupal\sherlock_d8\CoreClasses\MarketReference\MarketReference;
+use Drupal\sherlock_d8\CoreClasses\MessageCollector\MessageCollector;
 
 use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
 
@@ -44,12 +45,18 @@ class TaskLauncher implements iTaskLauncher {
    */
   protected $logger = null;
 
-  public function __construct(SherlockMailer $sherlockMailer, DatabaseManager $dbConnection, MarketFetchController $marketFetchController, SherlockTrouvailleEntity $trouvailleEntity, LoggerInterface $logger) {
+  /**
+   * @var MessageCollector $messageCollector
+   */
+  protected $messageCollector = null;
+
+  public function __construct(SherlockMailer $sherlockMailer, DatabaseManager $dbConnection, MarketFetchController $marketFetchController, SherlockTrouvailleEntity $trouvailleEntity, LoggerInterface $logger, MessageCollector $messageCollector) {
     $this->sherlockMailer = $sherlockMailer;
     $this->dbConnection = $dbConnection;
     $this->marketFetchController = $marketFetchController;
     $this->trouvailleEntity = $trouvailleEntity;
     $this->logger = $logger;
+    $this->messageCollector = $messageCollector;
   }
 
   /**
@@ -153,6 +160,39 @@ class TaskLauncher implements iTaskLauncher {
     if ($rowsInsertedNum >= 0 && $sendEmailNotification === TRUE && $this->mailSentSuccessfully === FALSE) {
       $this->logger->error('Task #@tid run completed successfully. New results from this task: [@res_number]. But REQUESTED mail notification HAS NOT been sent (to @usermail).', ['@tid' => $taskID, '@res_number' => $rowsInsertedNum, '@usermail' => $to,]);
     }
+
+    //Also, let's set some appropriate messages (they may be shown to user, or maybe not, if run from cron):
+    if (SherlockEntity::isSearchCreated()) {
+        $this->messageCollector->msgCollectorObject()
+          ->addMessage(t(SherlockEntity::SHERLOCK_SEARCH_SAVED_NOTIFICATION), 'status', 'H');
+    }
+
+    if (SherlockEntity::isSearchUpdated()) {
+        $this->messageCollector->msgCollectorObject()
+          ->addMessage(t(SherlockEntity::SHERLOCK_SEARCH_UPDATED_NOTIFICATION), 'status');
+    }
+
+    if (SherlockEntity::isSearchDeleted()) {
+        $this->messageCollector->msgCollectorObject()
+          ->addMessage(t(SherlockEntity::SHERLOCK_SEARCH_DELETED_NOTIFICATION), 'status');
+    }
+
+    if (SherlockEntity::isTaskCreated()) {
+        $this->messageCollector->msgCollectorObject()
+          ->addMessage(t(SherlockEntity::SHERLOCK_TASK_SAVED_NOTIFICATION), 'status');
+    }
+
+    if (SherlockEntity::isTaskUpdated()) {
+        $this->messageCollector->msgCollectorObject()
+          ->addMessage(t(SherlockEntity::SHERLOCK_TASK_UPDATED_NOTIFICATION), 'status');
+    }
+
+    if (SherlockEntity::isTaskDeleted()) {
+        $this->messageCollector->msgCollectorObject()
+          ->addMessage(t(SherlockEntity::SHERLOCK_TASK_DELETED_NOTIFICATION), 'status');
+    }
+
+    SherlockEntity::resetFlags();
 
     return $rowsInsertedNum;
   }
