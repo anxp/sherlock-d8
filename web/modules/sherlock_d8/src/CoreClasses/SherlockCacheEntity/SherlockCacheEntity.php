@@ -38,9 +38,11 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
       throw new InvalidInputData('Incorrect hash length gotten in SherlockCacheEntity::load');
     }
 
+    $mostOldButStillActual = time() - self::CACHE_LIFE_HOURS * 60 * 60;
+
     $query = $this->dbConnection->getDrupalNativeDBC()->select(SHERLOCK_CACHE_INDEX_TABLE, 'idx');
     $query->join(SHERLOCK_CACHE_CONTENT_TABLE, 'cnt', 'idx.id = cnt.url_query_id');
-    $query->fields('cnt', [])->condition('idx.url_query_hash', $urlQueryHash, '=');
+    $query->fields('cnt', [])->condition('idx.url_query_hash', $urlQueryHash, '=')->condition('idx.created', $mostOldButStillActual, '>=');
     $result = $query->execute()->fetchAllAssoc('id', PDO::FETCH_ASSOC);
 
     return array_values($result); //Return re-indexed from 0 array
