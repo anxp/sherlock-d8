@@ -175,16 +175,30 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
       $incomeResultsHashes[$i] = $queryUrlResults[$i]['url_price_hash']; //We use url_price_hash because it more 'strict' than url_hash
     }
 
-    $deleteCondition = [
-      'url_query_id' => [
-        'comparison_value' => $urlQueryID,
-        'comparison_op' => '=',
-      ],
-      'url_price_hash' => [
-        'comparison_value' => $incomeResultsHashes,
-        'comparison_op' => 'NOT IN',
-      ],
-    ];
+    if (empty($incomeResultsHashes)) {
+      //The case when resource does not contain ANY results for request - we just delete from cache all records for current url_query_id:
+
+      $deleteCondition = [
+        'url_query_id' => [
+          'comparison_value' => $urlQueryID,
+          'comparison_op' => '=',
+        ],
+      ];
+
+    } else {
+
+      $deleteCondition = [
+        'url_query_id' => [
+          'comparison_value' => $urlQueryID,
+          'comparison_op' => '=',
+        ],
+        'url_price_hash' => [
+          'comparison_value' => $incomeResultsHashes,
+          'comparison_op' => 'NOT IN',
+        ],
+      ];
+
+    }
 
     return $this->dbConnection->selectTable(SHERLOCK_CACHE_CONTENT_TABLE)->deleteRecords($deleteCondition, FALSE);
   }
