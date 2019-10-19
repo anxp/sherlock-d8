@@ -412,7 +412,7 @@ class SherlockMainForm extends FormBase {
          * @var $savedTaskObject iSherlockTaskEntity
          */
         $savedTaskObject = SherlockEntity::getInstance('TASK', $userID, $this->dbConnection)->load($linkedTaskID);
-        $activeTo = 'End time not set';
+        $activeTo = $this->t('End time not set');
 
         if ($savedTaskObject) {
           $activeTo = date('F j, Y', $savedTaskObject->getActiveTo());
@@ -482,8 +482,8 @@ class SherlockMainForm extends FormBase {
             '#title' => $this->t('Would you like to get all current results now, or just updates starting from tomorrow?'),
             '#default_value' => 'from_now',
             '#options' => [
-              'from_now' => 'Mail me ALL current results NOW, and new results starting from tomorrow',
-              'from_tomorrow' => 'Mail me new results starting from tomorrow',
+              'from_now' => $this->t('Mail me ALL current results NOW, and new results starting from tomorrow'),
+              'from_tomorrow' => $this->t('Mail me new results starting from tomorrow'),
             ],
           ];
 
@@ -498,7 +498,7 @@ class SherlockMainForm extends FormBase {
 
           $form['save_search_block']['active_to_remark'] = [
             '#type' => 'item',
-            '#title' => 'This task is active until',
+            '#title' => $this->t('This task is active until'),
             '#description' => $activeTo,
             '#prefix' => '<div class="container-inline">',
             '#suffix' => '</div>',

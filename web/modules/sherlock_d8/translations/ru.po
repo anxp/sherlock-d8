@@ -129,3 +129,41 @@ msgstr "Существующий поиск успешно обновлен."
 msgid "This name is already taken, we can't save new search with the same name. But you can overwrite existing search with new data."
 msgstr "Невозможно сохранить новый поиск под этим именем - это имя уже занято. Чтобы перезаписать существующий поиск - отметьте галочку \"Перезаписать если существует\"."
 
+msgid "Search has been updated."
+msgstr "Поиск обновлен."
+
+msgid "Search has been deleted."
+msgstr "Поиск удален."
+
+msgid "Scheduled task has been deleted."
+msgstr "Запланированная задача удалена."
+
+msgid "Search results just have been sent to your email (@email). If you don't see the letter in the inbox, please, check spam folder."
+msgstr "Результаты поиска отправлены на ваш email (@email). Если письма нет во входящих, проверьте, не попало ли оно в спам."
+
+msgid "New task has been successfully added to schedule."
+msgstr "Новая задача успешно добавлена в расписание."
+
+msgid "Task has been updated."
+msgstr "Задача обновлена."
+
+msgid "Current search results successfully saved/synced to database."
+msgstr "Текущие результаты поиска успешно сохранены/синхронизированы с результатами в БД."
+
+msgid "Check for updates daily and send a report on new offers."
+msgstr "Проверять обновления ежедневно и отправлять отчет о новых предложениях."
+
+msgid "Would you like to get all current results now, or just updates starting from tomorrow?"
+msgstr "Отправить все найденные результаты вам на почту прямо сейчас, или только новые предложения начиная с завтрашнего дня?"
+
+msgid "Mail me ALL current results NOW, and new results starting from tomorrow"
+msgstr "Отправить мне ВСЕ текущие результаты СЕЙЧАС, и также отправлять новые начиная с завтрашнего дня"
+
+msgid "Mail me new results starting from tomorrow"
+msgstr "Отправлять мне только новые результаты, начиная с завтрашнего дня"
+
+msgid "This task is active until"
+msgstr "Эта задача активна до"
+
+msgid "End time not set"
+msgstr "Конечная дата не установлена"
