@@ -61,6 +61,9 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
 
     $alreadyExistingIndexRecord = $this->dbConnection->selectTable(SHERLOCK_CACHE_INDEX_TABLE)->selectRecords($condition, 'id');
 
+    //Validate and adjust data before doing anything with them:
+    $this->validateDataToBeStored($queryUrlResults);
+
     //============================== NEW CACHE INSERTION ===============================================================
     //If no record with given $urlQueryHash has been found in index table ($alreadyExistingIndexRecord IS EMPTY ARRAY),
     //we guess that cache for this result is not yet created, and simply write it:
@@ -135,28 +138,16 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
 
     $newCacheResultsID = $this->dbConnection->selectTable(SHERLOCK_CACHE_INDEX_TABLE)->setData($mappedData)->insertRecord();
 
-    //Second, edit input array with data, so it would reflect structure of SHERLOCK_CACHE_CONTENT_TABLE
-    //(we will use it for bulk insert data to table):
-    $queryUrlResultsCount = count($queryUrlResults);
-
     /*
+     * Just a reminder:
      * SHERLOCK_CACHE_CONTENT_TABLE full structure:
      * [id][url_query_id][title][link][price_value][price_currency][thumbnail][url_hash][url_price_hash]
+     *
+     * Add 'url_query_id' to each element (row) of $queryUrlResults:
      */
+    $queryUrlResultsCount = count($queryUrlResults);
     for ($i = 0; $i < $queryUrlResultsCount; $i++) {
       $queryUrlResults[$i]['url_query_id'] = intval($newCacheResultsID);
-      $queryUrlResults[$i]['title'] = mb_substr($queryUrlResults[$i]['title'], 0, 255); //Trim to 255 symbols, if it actually longer
-      $priceInt = intval($queryUrlResults[$i]['price_value']);
-      $queryUrlResults[$i]['price_value'] = $priceInt > 0 ? $priceInt : null;
-      $queryUrlResults[$i]['price_currency'] = mb_substr($queryUrlResults[$i]['price_currency'], 0, 3);
-
-      //Check if checksums are ok, before writing them to DB:
-      if (strlen($queryUrlResults[$i]['url_hash']) !== 32 || strlen($queryUrlResults[$i]['url_price_hash']) !== 32) {
-        $urlHashLen = strlen($queryUrlResults[$i]['url_hash']);
-        $urlPriceHashLen = strlen($queryUrlResults[$i]['url_price_hash']);
-        $exceptionMessage = 'Cannot write set of records to DB, because url_hash should be 32 sym, [' . $urlHashLen . '] detected instead; url_price_hash should be 32 sym, [' . $urlPriceHashLen . '] detected instead.';
-        throw new InvalidInputData($exceptionMessage);
-      }
     }
 
     $numInserted = 0;
@@ -227,5 +218,30 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
     $onlyNewData = array_values($onlyNewData); //Reindex array
 
     return $onlyNewData;
+  }
+
+  protected function validateDataToBeStored(array &$queryUrlResults) {
+    //Edit array with data, so it would reflect structure of SHERLOCK_CACHE_CONTENT_TABLE
+    //(we will use it for bulk insert data to table):
+    $queryUrlResultsCount = count($queryUrlResults);
+
+    /*
+     * SHERLOCK_CACHE_CONTENT_TABLE full structure:
+     * [id][url_query_id][title][link][price_value][price_currency][thumbnail][url_hash][url_price_hash]
+     */
+    for ($i = 0; $i < $queryUrlResultsCount; $i++) {
+      $queryUrlResults[$i]['title'] = mb_substr($queryUrlResults[$i]['title'], 0, 255); //Trim to 255 symbols, if it actually longer
+      $priceInt = intval($queryUrlResults[$i]['price_value']);
+      $queryUrlResults[$i]['price_value'] = $priceInt > 0 ? $priceInt : null;
+      $queryUrlResults[$i]['price_currency'] = mb_substr($queryUrlResults[$i]['price_currency'], 0, 3);
+
+      //Check if checksums are ok, before writing them to DB:
+      if (strlen($queryUrlResults[$i]['url_hash']) !== 32 || strlen($queryUrlResults[$i]['url_price_hash']) !== 32) {
+        $urlHashLen = strlen($queryUrlResults[$i]['url_hash']);
+        $urlPriceHashLen = strlen($queryUrlResults[$i]['url_price_hash']);
+        $exceptionMessage = 'Cannot write set of records to DB, because url_hash should be 32 sym, [' . $urlHashLen . '] detected instead; url_price_hash should be 32 sym, [' . $urlPriceHashLen . '] detected instead.';
+        throw new InvalidInputData($exceptionMessage);
+      }
+    }
   }
 }
