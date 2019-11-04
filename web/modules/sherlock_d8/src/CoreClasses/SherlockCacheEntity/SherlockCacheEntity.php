@@ -94,9 +94,7 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
     $onlyNewData = $this->selectNewOnly($urlQueryID, $queryUrlResults);
 
     //4. Update array with new records - add url_query_id field to each record:
-    for ($i = 0; $i < count($onlyNewData); $i++) {
-      $onlyNewData[$i]['url_query_id'] = $urlQueryID;
-    }
+    $this->injectUrlQueryId($onlyNewData, $urlQueryID);
 
     //5. Write new data to DB:
     $numInserted = $this->bulkInsert(SHERLOCK_CACHE_CONTENT_TABLE, $onlyNewData);
@@ -127,7 +125,6 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
    * @param string $urlQueryHash
    * @param array $queryUrlResults
    * @return int
-   * @throws InvalidInputData
    */
   protected function saveCore(string $urlQueryHash, array $queryUrlResults): int {
     //First, create index:
@@ -136,19 +133,16 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
       'created' => time(),
     ];
 
-    $newCacheResultsID = $this->dbConnection->selectTable(SHERLOCK_CACHE_INDEX_TABLE)->setData($mappedData)->insertRecord();
+    $newCacheResultsID = intval($this->dbConnection->selectTable(SHERLOCK_CACHE_INDEX_TABLE)->setData($mappedData)->insertRecord());
 
     /*
+     * Add 'url_query_id' to each element (row) of $queryUrlResults.
+     *
      * Just a reminder:
      * SHERLOCK_CACHE_CONTENT_TABLE full structure:
      * [id][url_query_id][title][link][price_value][price_currency][thumbnail][url_hash][url_price_hash]
-     *
-     * Add 'url_query_id' to each element (row) of $queryUrlResults:
      */
-    $queryUrlResultsCount = count($queryUrlResults);
-    for ($i = 0; $i < $queryUrlResultsCount; $i++) {
-      $queryUrlResults[$i]['url_query_id'] = intval($newCacheResultsID);
-    }
+    $this->injectUrlQueryId($queryUrlResults, $newCacheResultsID);
 
     $numInserted = 0;
 
@@ -242,6 +236,14 @@ class SherlockCacheEntity implements iSherlockCacheEntity {
         $exceptionMessage = 'Cannot write set of records to DB, because url_hash should be 32 sym, [' . $urlHashLen . '] detected instead; url_price_hash should be 32 sym, [' . $urlPriceHashLen . '] detected instead.';
         throw new InvalidInputData($exceptionMessage);
       }
+    }
+  }
+
+  protected function injectUrlQueryId(array &$queryUrlResults, int $id) {
+    //Add 'url_query_id' to each element (row) of $queryUrlResults:
+    $queryUrlResultsCount = count($queryUrlResults);
+    for ($i = 0; $i < $queryUrlResultsCount; $i++) {
+      $queryUrlResults[$i]['url_query_id'] = $id;
     }
   }
 }
