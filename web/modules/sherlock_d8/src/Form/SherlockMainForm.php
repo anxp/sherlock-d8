@@ -636,7 +636,18 @@ class SherlockMainForm extends FormBase {
 
   protected function newBlock(FormStateInterface $form_state): void {
     $userAdded = $form_state->get('user_added');
-    $newBlockNo = (is_array($userAdded)) ? count($userAdded) : 0;
+
+    $findGreatestKeywordBlockIndex = function() use ($userAdded) :int {
+      $keys = [];
+
+      foreach ($userAdded as $key => $value) {
+        $keys[] = intval(explode('-', $key)[1]);
+      }
+
+      return max($keys);
+    };
+
+    $newBlockNo = (is_array($userAdded)) ? ($findGreatestKeywordBlockIndex() + 1) : 0;
 
     //Create a new empty container just with title:
     $newBlock = [
@@ -807,6 +818,24 @@ class SherlockMainForm extends FormBase {
 
     $user_added = $form_state->get('user_added');
     unset($user_added['KEYWORD-'.$buttonBlockNo]['VALUES'][$buttonVariationNo]); //Field #$buttonVariationNo from block #$buttonBlockNo now DELETED.
+
+    //Now we should recheck $user_added['KEYWORD-'.$buttonBlockNo]['VALUES'] array, and found if any text inputs are left in it.
+    //Text inputs are array elements indexed by numeric indexes, like 0, 1, 2, 3
+    //If no text inputs left - delete block completely:
+    $numericIndexDetected = function($arrayToTest) {
+      foreach ($arrayToTest as $key => $value) {
+        if (is_numeric($key)) {
+          return TRUE;
+        }
+      }
+
+      return FALSE;
+    };
+
+    //No numeric indexes - block is empty - delete it completely:
+    if ($numericIndexDetected($user_added['KEYWORD-'.$buttonBlockNo]['VALUES']) === FALSE) {
+      unset($user_added['KEYWORD-'.$buttonBlockNo]);
+    }
 
     $form_state->set('user_added', $user_added);
     $form_state->set('does_user_altering_form', TRUE);
