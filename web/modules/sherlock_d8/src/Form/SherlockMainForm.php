@@ -644,7 +644,7 @@ class SherlockMainForm extends FormBase {
         $keys[] = intval(explode('-', $key)[1]);
       }
 
-      return empty($keys) ? 0 : max($keys);
+      return empty($keys) ? -1 : max($keys);
     };
 
     $newBlockNo = (is_array($userAdded)) ? ($findGreatestKeywordBlockIndex() + 1) : 0;
