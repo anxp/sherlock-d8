@@ -16,7 +16,7 @@ use PhpQuery\PhpQueryObject as phpQueryObject;
  * This makes possible to create new instances automatically, knowing only marketId.
  * */
 class skl_ItemSniper extends ItemSniper {
-  public function __construct($URL, $pageLimit, string $advertBlockSP = 'div.search_lot', string $titleSP = 'div.search_lot_title > a', string $titleLinkSP = 'div.search_lot_title > a', string $priceSP = 'div.search_lot_price', string $imageAddressSP = 'div.searchimg', string $nextPageLinkSP = 'div.rpagination a:last') {
+  public function __construct($URL, $pageLimit, string $advertBlockSP = 'div.search_lot', string $titleSP = 'div.search_lot_title', string $titleLinkSP = 'a', string $priceSP = 'div.search_lot_price', string $imageAddressSP = 'div.searchimg', string $nextPageLinkSP = 'div.rpagination a:last') {
     parent::__construct($URL, $pageLimit, $advertBlockSP, $titleSP, $titleLinkSP, $priceSP, $imageAddressSP, $nextPageLinkSP);
   }
 
