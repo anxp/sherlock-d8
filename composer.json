@@ -29,6 +29,7 @@
         "drupal/mailsystem": "^4.1",
         "drupal/queue_ui": "^2.0",
         "drupal/smtp": "^1.0@beta",
+        "drupal/social_auth_facebook": "^2.0",
         "drupal/swiftmailer": "^1.0@beta",
         "drush/drush": "^9.0.0",
         "vlucas/phpdotenv": "^2.4",
