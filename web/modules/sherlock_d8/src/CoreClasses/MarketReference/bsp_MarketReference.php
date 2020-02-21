@@ -25,7 +25,8 @@ class bsp_MarketReference extends MarketReference implements iMarketReference {
    * @return string result string, which looks like usual URL;
    */
   public static function makeRequestURL(array $keyWords, int $priceFrom = null, int $priceTo = null, bool $checkDescription = false): string {
-    //               https://besplatka.ua /                           all/q-               what-we-looking-for
+    $keyWords = array_map('urlencode', $keyWords);
+    //               https://besplatka.ua /                           all/q-               what-we-looking-for (but urlencoded, because cyrillic does not work anymore on Besplatka)
     $fullQueryURL = (self::getBaseURL()).(self::URL_PARTS_SEPARATOR).(self::$subjectPrefix.implode(self::$wordsGlue, $keyWords));
     return $fullQueryURL;
   }
