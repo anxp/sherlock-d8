@@ -2,23 +2,41 @@
 /**
  * Created by PhpStorm.
  * User: andrey
- * Date: 2019-02-17
- * Time: 13:42
+ * Date: 2019-04-12
+ * Time: 22:25
  */
-
-namespace Drupal\sherlock_d8\CoreClasses\ItemSniper;
+namespace Drupal\sherlock_d8\CoreClasses\FleaMarket;
 
 use PhpQuery\PhpQueryObject as phpQueryObject;
 use function PhpQuery\pq;
 
-/*
- * Naming convention for child classes:
- * They must have prefix with marketId and underscore symbol, like: olx_, bsp_, skl_, with word 'ItemSniper' after prefix: ex.: olx_ItemSniper.
- * This makes possible to create new instances automatically, knowing only marketId.
- * */
-class bsp_ItemSniper extends ItemSniper {
+class bsp_FleaMarket extends FleaMarket {
+  //Besplatka has simplest fleamarket functionality - it does not support any extra filtration options, only search by given keywords.
+
+  protected static $marketId = 'bsp';
+  protected static $marketName = 'Besplatka';
+  protected static $domainName = 'besplatka.ua';
+  protected static $subjectPrefix = 'all/q-';
+  protected static $wordsGlue = '+';
+
   public function __construct($URL, $pageLimit, string $advertBlockSP = 'div.messages-list > div.msg-one > div.msg-inner', string $titleSP = 'div.w-body a.m-title', string $titleLinkSP = 'div.w-body a.m-title', string $priceSP = 'div.w-body > p.m-price > span', string $imageAddressSP = 'a.w-image > img.img-responsive', string $nextPageLinkSP = 'head > link.pag_params') {
     parent::__construct($URL, $pageLimit, $advertBlockSP, $titleSP, $titleLinkSP, $priceSP, $imageAddressSP, $nextPageLinkSP);
+  }
+
+  /**
+   * This method generates full query URL from given key words. Price limits and search in description flag ARE NOT SUPPORTED IN BESPLATKA.
+   * Usage example: bsp_MarketReference::makeRequestURL(['Parker', 'перьевая', 'ручка']);
+   * @param array $keyWords keywords to search;
+   * @param int|null $priceFrom not supported by Besplatka;
+   * @param int|null $priceTo not supported by Besplatka;
+   * @param bool $checkDescription not supported by Besplatka;
+   * @return string result string, which looks like usual URL;
+   */
+  public static function makeRequestURL(array $keyWords, int $priceFrom = null, int $priceTo = null, bool $checkDescription = false): string {
+    $keyWords = array_map('urlencode', $keyWords);
+    //               https://besplatka.ua /                           all/q-               what-we-looking-for (but urlencoded, because cyrillic does not work anymore on Besplatka)
+    $fullQueryURL = (self::getBaseURL()).(self::URL_PARTS_SEPARATOR).(self::$subjectPrefix.implode(self::$wordsGlue, $keyWords));
+    return $fullQueryURL;
   }
 
   protected function getItemTitle(phpQueryObject $phpQueryNode): string {

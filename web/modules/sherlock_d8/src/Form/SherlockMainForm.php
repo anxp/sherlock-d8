@@ -19,7 +19,7 @@ use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockSearchEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockTaskEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
 use Drupal\sherlock_d8\CoreClasses\BlackMagic\BlackMagic;
-use Drupal\sherlock_d8\CoreClasses\MarketReference\MarketReference;
+use Drupal\sherlock_d8\CoreClasses\FleaMarket\{FleaMarket, olx_FleaMarket, bsp_FleaMarket, skl_FleaMarket};
 use Drupal\sherlock_d8\CoreClasses\DatabaseManager\DatabaseManager;
 use Drupal\sherlock_d8\CoreClasses\TaskLauncher\TaskLauncher;
 use Drupal\sherlock_d8\CoreClasses\MessageCollector\MessageCollector;
@@ -190,24 +190,20 @@ class SherlockMainForm extends FormBase {
         }
         //--------------------------------------------------------------------------------------------------------------
 
-        $fleamarketObjects = MarketReference::getAvailableFleamarkets(TRUE);
+        $fleamarketsProperties = FleaMarket::getSupportedMarketsList(TRUE);
 
         //Print out supported flea-markets. TODO: maybe this output better to do with theme function and template file?
         $formattedList = [];
         $resourcesChooserDefault = [];
 
-        /**
-         * @var \Drupal\sherlock_d8\CoreClasses\MarketReference\iMarketReference $object
-         */
-
-        foreach ($fleamarketObjects as $object) {
-          $currentMarketId = $object::getMarketId();
-          $currentMarketName = $object::getMarketName();
-          $currentMarketUrl = $object::getBaseURL();
+        foreach ($fleamarketsProperties as $marketRecord) {
+          $currentMarketId = $marketRecord['marketID'];
+          $currentMarketName = $marketRecord['marketName'];
+          $currentMarketUrl = $marketRecord['marketURL'];
           $formattedList[$currentMarketId] = $currentMarketName . ' [<a target="_blank" href="' . $currentMarketUrl . '">' . t('Open this market\'s website in new tab') . '</a>]';
           $resourcesChooserDefault[$currentMarketId] = 0; //We just want all checkboxes to be unchecked by default.
         }
-        unset($object, $currentMarketId, $currentMarketName, $currentMarketUrl, $fleamarketObjects);
+        unset($marketRecord, $currentMarketId, $currentMarketName, $currentMarketUrl, $fleamarketsProperties);
 
         $form['resources_chooser'] = [
           '#type' => 'checkboxes',
@@ -365,7 +361,7 @@ class SherlockMainForm extends FormBase {
         //Attach array with selected markets IDs to drupalSettings object, to be accessible from JS:
         $form['#attached']['drupalSettings']['sherlock_d8']['selectedMarkets'] = $form_state->get(['sherlock_tmp_storage', 'selected_markets']);
 
-        $fleamarketObjects = MarketReference::getAvailableFleamarkets(TRUE);
+        $fleamarketsList = FleaMarket::getSupportedMarketsList(TRUE);
 
         //This is the full path to animated GIF (sand clock like in windows-98), showing to user, while php script is busy in parsing fleamarkets:
         $schemeAndHttpHost = $this->getRequest()->getSchemeAndHttpHost();
@@ -378,7 +374,7 @@ class SherlockMainForm extends FormBase {
           //Let's create div-container for every checked resource, because we need place where to output parse result
           if ($marketId === 0) {continue;}
           $outputContainers[$marketId]['market_id'] = $marketId;
-          $outputContainers[$marketId]['container_title'] = $fleamarketObjects[$marketId]::getMarketName();
+          $outputContainers[$marketId]['container_title'] = $fleamarketsList[$marketId]['marketName'];
           $outputContainers[$marketId]['container_id'] = $marketId.'-output-block';
           $outputContainers[$marketId]['loading_animation_path'] = $animationPath;
         }
@@ -387,7 +383,7 @@ class SherlockMainForm extends FormBase {
         //Prepare associative array with constructed search queries to show to user. Keys of array are normal (not short!) flea-market names.
         $constructedUrlsCollection = [];
         foreach ($form_state->get(['sherlock_tmp_storage', 'constructed_urls_collection']) as $key => $value) {
-          $userFriendlyKey = $fleamarketObjects[$key]::getMarketName();
+          $userFriendlyKey = $fleamarketsList[$key]['marketName'];
           $constructedUrlsCollection[$userFriendlyKey] = $value;
         }
         unset($key, $value);
@@ -905,7 +901,7 @@ class SherlockMainForm extends FormBase {
 
     //Now let's request list of all resources and their settings.
     $resourcesList = [];
-    $resourcesList = MarketReference::getAvailableFleamarkets(TRUE);
+    $resourcesList = FleaMarket::getSupportedMarketsList(TRUE);
 
     //Array with all search URLs for all user-specified resources. This collection of URL we will use to cURL each of them at the next step.
     //All values are splitted by nested arrays. Keys to nested arrays are names of the resources.
@@ -917,18 +913,23 @@ class SherlockMainForm extends FormBase {
     $keywordsCombinations = BlackMagic::generateAllPossibleCombinations($blockValues);
     $keywordsCombinationsCount = count($keywordsCombinations);
     foreach ($form_state->getValue('resources_chooser') as $key => $value) { //$key here is flea market ID, like olx, bsp, skl
-      if ($value !== 0) { //we take into consideration only checked resources, if checkbox unchecked its value == 0
-        for ($i = 0; $i < $keywordsCombinationsCount; $i++) {
-          $constructedUrlsCollection[$key][] = $resourcesList[$key]::makeRequestURL($keywordsCombinations[$i], $priceFrom, $priceTo, $checkDescriptionToo);
-        }
-
-        //Check constructed URLs, and left only unique of them:
-        $constructedUrlsCollection[$key] = array_unique($constructedUrlsCollection[$key]);
-
-        //Save selected (ONLY SELECTED!) fleamarkets to $form_state['sherlock_tmp_storage']['selected_markets'],
-        //we'll pass them to frontend by attaching to drupalSettings object at step 2 of the main form:
-        $sherlockTempStorage['selected_markets'][] = $key;
+      if ($value === 0) { //we take into consideration only checked resources, if checkbox unchecked its value == 0 and we skip it.
+        continue;
       }
+
+      for ($i = 0; $i < $keywordsCombinationsCount; $i++) {
+        $className = $resourcesList[$key]['marketClassName'];
+        $fleaMarketObjectReflection = new \ReflectionClass('\Drupal\sherlock_d8\CoreClasses\FleaMarket\\' . $className);
+        $requestConstructor = $fleaMarketObjectReflection->getMethod('makeRequestURL');
+        $constructedUrlsCollection[$key][] = $requestConstructor->invokeArgs(null, [$keywordsCombinations[$i], $priceFrom, $priceTo, $checkDescriptionToo]);
+      }
+
+      //Check constructed URLs, and left only unique of them:
+      $constructedUrlsCollection[$key] = array_unique($constructedUrlsCollection[$key]);
+
+      //Save selected (ONLY SELECTED!) fleamarkets to $form_state['sherlock_tmp_storage']['selected_markets'],
+      //we'll pass them to frontend by attaching to drupalSettings object at step 2 of the main form:
+      $sherlockTempStorage['selected_markets'][] = $key;
     }
     unset($key, $value);
 
@@ -1015,7 +1016,7 @@ class SherlockMainForm extends FormBase {
     // Check fleamarkets again (actually, load results from cache), and, optionally, send first email notification:
 
     $isSubscribeForUpdatesChecked = intval($form_state->getValue(['save_search_block', 'subscribe_to_updates']));
-    
+
     if ($isSubscribeForUpdatesChecked) {
       /**
        * @var iSherlockSearchEntity $searchEntity
@@ -1024,7 +1025,7 @@ class SherlockMainForm extends FormBase {
 
       $nowOrTomorrowRadio = $form_state->getValue(['save_search_block', 'now_or_tomorrow_radiobutton']);
 
-      $sendMail = ($nowOrTomorrowRadio === 'from_now') ? TRUE : FALSE;
+      $sendMail = ($nowOrTomorrowRadio === 'from_now');
       $rowsInsertedNum = -1;
 
       try {

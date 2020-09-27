@@ -11,7 +11,7 @@ namespace Drupal\sherlock_d8\Controller;
 use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Drupal\sherlock_d8\CoreClasses\ItemSniper\{ItemSniper, olx_ItemSniper, bsp_ItemSniper, skl_ItemSniper};
+use Drupal\sherlock_d8\CoreClasses\FleaMarket\{FleaMarket, olx_FleaMarket, bsp_FleaMarket, skl_FleaMarket};
 use Drupal\sherlock_d8\CoreClasses\ArrayFiltration_2D\ArrayFiltration_2D;
 use Drupal\sherlock_d8\CoreClasses\FileManager\FileManager;
 use Drupal\sherlock_d8\CoreClasses\SherlockCacheEntity\SherlockCacheEntity;
@@ -36,11 +36,7 @@ class MarketFetchController extends ControllerBase {
   }
 
   public function fetchMarketCore(string $marketID, array $urlsSetForGivenMarket, int $priceFrom = null, int $priceTo = null): array {
-    $itemSniperFullNamespacePath = '\Drupal\sherlock_d8\CoreClasses\ItemSniper\\';
-
-    //Construct Object Name.
-    // As a result we will have Fully Qualified Object Name like "\Drupal\sherlock_d8\CoreClasses\ItemSniper\olx_ItemSniper":
-    $objName = $itemSniperFullNamespacePath.$marketID . '_ItemSniper';
+    $fleaMarketObjectReflection = new \ReflectionClass('\Drupal\sherlock_d8\CoreClasses\FleaMarket\\' . $marketID . '_FleaMarket');
 
     $snipeRawResults = [];
     for ($i = 0; $i < count($urlsSetForGivenMarket); $i++) {
@@ -50,9 +46,9 @@ class MarketFetchController extends ControllerBase {
       $oneQueryResult = $this->sherlockCache->load($hashAsName);
 
       if (empty($oneQueryResult)) {
-        $sniperObject = new $objName($urlsSetForGivenMarket[$i], 5); //Create new object of somemarket_ItemSniper.
-        $oneQueryResult = $sniperObject->grabItems();
-        unset($sniperObject);
+        $fleaMarketObject = $fleaMarketObjectReflection->newInstanceArgs([$urlsSetForGivenMarket[$i], 5]); //Create new object of marketid_FleaMarket.
+        $oneQueryResult = $fleaMarketObject->grabItems();
+        unset($fleaMarketObject);
 
         $this->calculateAndInjectChecksums($oneQueryResult); //Upgrade incoming data with important checksums
 
@@ -63,13 +59,7 @@ class MarketFetchController extends ControllerBase {
     }
 
     $rawResultsFlattened = [];
-    foreach ($snipeRawResults as $resultsPerURL) {
-      foreach ($resultsPerURL as $oneResult) {
-        $rawResultsFlattened[] = $oneResult;
-      }
-      unset($oneResult);
-    }
-    unset($resultsPerURL);
+    $rawResultsFlattened = array_merge(...array_values($snipeRawResults));
 
     //And finally - in $filteredData we'll have filtered and unique collection of [title, link, price] for given marketID,
     //and this data we'll return to frontend as JSON.
