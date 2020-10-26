@@ -51,7 +51,7 @@ class bsp_FleaMarket extends FleaMarket {
 
   protected function getItemLink(phpQueryObject $phpQueryNode): string {
     //All links at Besplatka are 'internal', so we need add 'https://besplatka.ua' at the begining of them:
-    return ('https://besplatka.ua'.$phpQueryNode->find($this->titleLinkSP)->attr('href'));
+    return (self::getBaseURL() . $phpQueryNode->find($this->titleLinkSP)->attr('href'));
   }
 
   protected function getItemPrice(phpQueryObject $phpQueryNode): array {
@@ -97,7 +97,7 @@ class bsp_FleaMarket extends FleaMarket {
   protected function getNextPageLink(phpQueryObject $phpQueryNode): string {
     $internalURL = $phpQueryNode->find($this->nextPageLinkSP)->attr('href');
     //Construct real full path only if found "next page" link is NOT empty, else -> just return '' (empty string):
-    $path = ($internalURL === '') ? '' : ('https://besplatka.ua'.$internalURL);
+    $path = ($internalURL === '') ? '' : (self::getBaseURL() . $internalURL);
     return ($path);
   }
 }

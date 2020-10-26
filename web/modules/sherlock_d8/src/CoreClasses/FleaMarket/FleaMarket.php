@@ -103,6 +103,13 @@ abstract class FleaMarket implements iMarketReference, iMarketsRegistry, iMarket
         'marketURL' => skl_FleaMarket::getBaseURL(),
         'marketClassName' => 'skl_FleaMarket',
       ],
+
+      izi_FleaMarket::getMarketId() => [
+        'marketID' => izi_FleaMarket::getMarketId(),
+        'marketName' => izi_FleaMarket::getMarketName(),
+        'marketURL' => izi_FleaMarket::getBaseURL(),
+        'marketClassName' => 'izi_FleaMarket',
+      ],
     ];
 
     if (!$assoc) {

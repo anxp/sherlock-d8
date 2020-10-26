@@ -59,7 +59,7 @@ class skl_FleaMarket extends FleaMarket {
   }
 
   protected function getItemLink(phpQueryObject $phpQueryNode): string {
-    return ('https://skylots.org'.$phpQueryNode->find($this->titleLinkSP)->attr('href'));
+    return (self::getBaseURL() . $phpQueryNode->find($this->titleLinkSP)->attr('href'));
   }
 
   protected function getItemPrice(phpQueryObject $phpQueryNode): array {
@@ -74,7 +74,7 @@ class skl_FleaMarket extends FleaMarket {
   protected function getNextPageLink(phpQueryObject $phpQueryNode): string {
     $internalURL = $phpQueryNode->find($this->nextPageLinkSP)->attr('href');
     //Construct real full path only if found "next page" link is NOT empty, else -> just return '' (empty string):
-    $path = ($internalURL === '') ? '' : ('https://skylots.org/search.php'.$internalURL);
+    $path = ($internalURL === '') ? '' : (self::getBaseURL() . self::URL_PARTS_SEPARATOR . self::$searchPointOfEntry . $internalURL);
     return ($path);
   }
 }
