@@ -16,7 +16,7 @@ use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\SherlockSearchEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockEntity\iSherlockTaskEntity;
 use Drupal\sherlock_d8\CoreClasses\SherlockTrouvailleEntity\SherlockTrouvailleEntity;
-use Drupal\sherlock_d8\CoreClasses\MarketReference\MarketReference;
+use Drupal\sherlock_d8\CoreClasses\FleaMarket\FleaMarket;
 use Drupal\sherlock_d8\CoreClasses\MessageCollector\MessageCollector;
 
 use Drupal\sherlock_d8\CoreClasses\Exceptions\InvalidInputData;
@@ -217,17 +217,17 @@ class TaskLauncher implements iTaskLauncher {
     $userAccount = \Drupal\user\Entity\User::load($this->userID);
     $userName = $userAccount->getAccountName();
 
-    $fleamarketObjects = MarketReference::getAvailableFleamarkets(TRUE);
+    $fleamarketObjects = FleaMarket::getSupportedMarketsList(TRUE);
 
     $new_results = [];
     foreach ($newResults as $mid => $mResults) {
-      $new_results[$fleamarketObjects[$mid]::getMarketName()] = $mResults; //Make a new array with results, but keys are not id's (skl) but human-friendly fleamarket names (Skylots)
+      $new_results[$fleamarketObjects[$mid]['marketName']] = $mResults; //Make a new array with results, but keys are not id's (skl) but human-friendly fleamarket names (Skylots)
     }
     unset($mid, $mResults);
 
     $all_results = [];
     foreach ($allResults as $mid => $mResults) {
-      $all_results[$fleamarketObjects[$mid]::getMarketName()] = $mResults;
+      $all_results[$fleamarketObjects[$mid]['marketName']] = $mResults;
     }
     unset($mid, $mResults);
 
