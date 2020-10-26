@@ -12,7 +12,7 @@ class izi_FleaMarket extends FleaMarket {
   protected static $wordsGlue = '+';
 
   //Альтернативный вариант поиска ссылки на следующую страницу в результатах поиска для IZI: 'ul.ek-grid > li > a.ek-button:contains("Вперед")'
-  public function __construct($URL, $pageLimit, $advertBlockSP = 'li.b-catalog__item', $titleSP = 'div.ek-box > span.ek-text > a.ek-link', $titleLinkSP = 'div.ek-box > span.ek-text > a.ek-link', $priceSP = 'div.ek-box > span.ek-text_weight_black', $imageAddressSP = 'picture.ek-picture > img', $nextPageLinkSP = 'div[data-bazooka="ProductsList"] > div.ek-box > ul.ek-grid > li.ek-grid__item:last > a.ek-button') {
+  public function __construct($URL, $pageLimit, $advertBlockSP = 'li.b-catalog__item', $titleSP = 'div.ek-box > span.ek-text > a.ek-link', $titleLinkSP = 'div.ek-box > span.ek-text > a.ek-link', $priceSP = 'div.ek-box > span.ek-text_weight_black', $imageAddressSP = 'picture.ek-picture > source', $nextPageLinkSP = 'div[data-bazooka="ProductsList"] > div.ek-box > ul.ek-grid > li.ek-grid__item:last > a.ek-button') {
     parent::__construct($URL, $pageLimit, $advertBlockSP, $titleSP, $titleLinkSP, $priceSP, $imageAddressSP, $nextPageLinkSP);
   }
 
@@ -51,6 +51,8 @@ class izi_FleaMarket extends FleaMarket {
 
   protected function getThumbnailAddress(phpQueryObject $phpQueryNode): string {
     $thumbAddress = $phpQueryNode->find($this->imageAddressSP)->attr('data-srcset');
+    $thumbAddress = str_replace('webp_', '', $thumbAddress);
+    
     return (empty($thumbAddress) ? '' : $thumbAddress);
   }
 
