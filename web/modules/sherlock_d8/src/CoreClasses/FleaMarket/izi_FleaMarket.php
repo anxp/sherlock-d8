@@ -51,8 +51,6 @@ class izi_FleaMarket extends FleaMarket {
 
   protected function getThumbnailAddress(phpQueryObject $phpQueryNode): string {
     $thumbAddress = $phpQueryNode->find($this->imageAddressSP)->attr('data-srcset');
-    $thumbAddress = str_replace('webp_', '', $thumbAddress);
-    
     return (empty($thumbAddress) ? '' : $thumbAddress);
   }
 

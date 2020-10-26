@@ -212,6 +212,10 @@ class FileManager {
         $ext = 'jpeg';
         break;
 
+      case 'image/webp':
+        $ext = 'webp';
+        break;
+
       case 'image/gif':
         $ext = 'gif';
         break;
