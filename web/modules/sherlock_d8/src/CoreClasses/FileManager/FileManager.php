@@ -156,7 +156,7 @@ class FileManager {
 
       //Ok, file is not loaded, but we can try to load it from remote and save detected extension for future checks.
       $urlParsed = parse_url($url);
-      $urlKeyCurrent = $urlParsed['scheme'] . $urlParsed['host'] . ($urlParsed['port'] ? $urlParsed['port'] : '');
+      $urlKeyCurrent = $urlParsed['scheme'] . $urlParsed['host'] . ($urlParsed['port'] ?? '');
 
       //If we already detected extension on previous iteration, let's assume all other files from this host
       //(we check host at each iteration) will have the same extension, and return it:
