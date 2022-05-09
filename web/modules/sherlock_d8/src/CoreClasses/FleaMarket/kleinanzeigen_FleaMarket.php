@@ -14,7 +14,7 @@ class kleinanzeigen_FleaMarket extends FleaMarket {
   protected static $marketId = 'kleinanzeigen';
   protected static $marketName = 'eBay-Kleinanzeigen';
   protected static $domainName = 'ebay-kleinanzeigen.de';
-  protected static $advertisementType = 's-anzeige:angebote';
+  protected static $advertisementType = 'anzeige:angebote';
   protected static $subjectPrefix = 's-';
   protected static $wordsGlue = '-';
   protected static $suffix = 'k0';
@@ -33,15 +33,20 @@ class kleinanzeigen_FleaMarket extends FleaMarket {
    * @return string result string which looks like usual URL with parameters after question mark.
    */
   public static function makeRequestURL(array $keyWords, int $priceFrom = null, int $priceTo = null, bool $checkDescription = false) :string {
-    $priceFilter = '';
+    
+    $urlComponents = [
+      self::getBaseURL(),
+      self::$subjectPrefix . self::$advertisementType,
+    ];
 
     if ($priceFrom !== null || $priceTo !== null) {
-      $priceFilter = 'preis:' . $priceFrom . ':' . $priceTo . self::URL_PARTS_SEPARATOR;
+      $urlComponents[] = 'preis:' . $priceFrom . ':' . $priceTo;
     }
 
-    //              https://ebay-kleinanzeigen.de /                           s-anzeige:angebote         /                           s-                     preis:100:200/ what-we-looking-for                    /                           k0
-    $fullQueryURL = (self::getBaseURL()         ).(self::URL_PARTS_SEPARATOR).(self::$advertisementType).(self::URL_PARTS_SEPARATOR).(self::$subjectPrefix).($priceFilter).(implode(self::$wordsGlue, $keyWords)).(self::URL_PARTS_SEPARATOR).(self::$suffix);
-    return $fullQueryURL;
+    $urlComponents[] = implode(self::$wordsGlue, $keyWords);
+    $urlComponents[] = self::$suffix;
+
+    return implode(self::URL_PARTS_SEPARATOR, $urlComponents);
   }
 
   protected function getItemTitle(phpQueryObject $phpQueryNode) :string {
