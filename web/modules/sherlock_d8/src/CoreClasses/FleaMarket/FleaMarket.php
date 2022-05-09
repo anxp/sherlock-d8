@@ -83,6 +83,13 @@ abstract class FleaMarket implements iMarketReference, iMarketsRegistry, iMarket
   public static function getSupportedMarketsList($assoc = FALSE) :array {
     $marketsProperties = [
 
+      kleinanzeigen_FleaMarket::getMarketId() => [
+        'marketID' => kleinanzeigen_FleaMarket::getMarketId(),
+        'marketName' => kleinanzeigen_FleaMarket::getMarketName(),
+        'marketURL' => kleinanzeigen_FleaMarket::getBaseURL(),
+        'marketClassName' => 'kleinanzeigen_FleaMarket',
+      ],
+
       olx_FleaMarket::getMarketId() => [
         'marketID' => olx_FleaMarket::getMarketId(),
         'marketName' => olx_FleaMarket::getMarketName(),

@@ -274,7 +274,7 @@ class SherlockMainForm extends FormBase {
           '#default_value' => '',
           '#size' => 10,
           '#maxlength' => 10,
-          '#description' => 'UAH', //'Enter the minimal price, at which (or higher) item will be selected.',
+          '#description' => 'Currency depends on market', //'Enter the minimal price, at which (or higher) item will be selected.',
           '#prefix' => '<div class="container-inline">',
           '#suffix' => '</div>',
         ];
@@ -285,7 +285,7 @@ class SherlockMainForm extends FormBase {
           '#default_value' => '',
           '#size' => 10,
           '#maxlength' => 10,
-          '#description' => 'UAH', //'Enter the maximum acceptable price for items.',
+          '#description' => 'Currency depends on market', //'Enter the maximum acceptable price for items.',
           '#prefix' => '<div class="container-inline">',
           '#suffix' => '</div>',
         ];

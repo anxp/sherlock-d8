@@ -51,6 +51,6 @@
 	background: #fff;
 }
 /* Активация секций с помощью псевдокласса :checked */
-#olx_tab:checked~#olx-output-block, #bsp_tab:checked~#bsp-output-block, #skl_tab:checked~#skl-output-block, #izi_tab:checked~#izi-output-block {
+#kleinanzeigen_tab:checked~#kleinanzeigen-output-block, #olx_tab:checked~#olx-output-block, #bsp_tab:checked~#bsp-output-block, #skl_tab:checked~#skl-output-block, #izi_tab:checked~#izi-output-block {
 	display: block;
 }
