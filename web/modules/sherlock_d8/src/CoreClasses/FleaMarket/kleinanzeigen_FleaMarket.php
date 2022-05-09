@@ -14,6 +14,7 @@ class kleinanzeigen_FleaMarket extends FleaMarket {
   protected static $marketId = 'kleinanzeigen';
   protected static $marketName = 'eBay-Kleinanzeigen';
   protected static $domainName = 'ebay-kleinanzeigen.de';
+  protected static $advertisementType = 's-anzeige:angebote';
   protected static $subjectPrefix = 's-';
   protected static $wordsGlue = '-';
   protected static $suffix = 'k0';
@@ -35,11 +36,11 @@ class kleinanzeigen_FleaMarket extends FleaMarket {
     $priceFilter = '';
 
     if ($priceFrom !== null || $priceTo !== null) {
-      $priceFilter = 'preis:' . $priceFrom . ':' . $priceTo;
+      $priceFilter = 'preis:' . $priceFrom . ':' . $priceTo . self::URL_PARTS_SEPARATOR;
     }
 
-    //              https://ebay-kleinanzeigen.de /                           s-                     preis:1000:2000 /                           what-we-looking-for                    /                           k0
-    $fullQueryURL = (self::getBaseURL()         ).(self::URL_PARTS_SEPARATOR).(self::$subjectPrefix).($priceFilter ).(self::URL_PARTS_SEPARATOR).(implode(self::$wordsGlue, $keyWords)).(self::URL_PARTS_SEPARATOR).(self::$suffix);
+    //              https://ebay-kleinanzeigen.de /                           s-anzeige:angebote         /                           s-                     preis:100:200/ what-we-looking-for                    /                           k0
+    $fullQueryURL = (self::getBaseURL()         ).(self::URL_PARTS_SEPARATOR).(self::$advertisementType).(self::URL_PARTS_SEPARATOR).(self::$subjectPrefix).($priceFilter).(implode(self::$wordsGlue, $keyWords)).(self::URL_PARTS_SEPARATOR).(self::$suffix);
     return $fullQueryURL;
   }
 
