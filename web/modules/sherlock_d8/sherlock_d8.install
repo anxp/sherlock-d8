@@ -147,8 +147,8 @@ function sherlock_d8_schema() {
 
       'fmkt_id' => [
         'description' => 'Fleamarket ID, to which result belongs.',
-        'type' => 'char',
-        'length' => 3,
+        'type' => 'varchar',
+        'length' => 255,
         'not null' => TRUE,
       ],
 
