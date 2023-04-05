@@ -19,7 +19,7 @@ class kleinanzeigen_FleaMarket extends FleaMarket {
   protected static $wordsGlue = '-';
   protected static $suffix = 'k0';
 
-  public function __construct($URL, $pageLimit, $advertBlockSP = 'article.aditem', $titleSP = 'h2', $titleLinkSP = 'h2 > a', $priceSP = 'p.aditem-main--middle--price', $imageAddressSP = 'div.imagebox', $nextPageLinkSP = 'div.pagination-nav > a.pagination-next') {
+  public function __construct($URL, $pageLimit, $advertBlockSP = 'article.aditem', $titleSP = 'h2', $titleLinkSP = 'h2 > a', $priceSP = 'p.aditem-main--middle--price-shipping--price', $imageAddressSP = 'div.imagebox', $nextPageLinkSP = 'div.pagination-nav > a.pagination-next') {
     parent::__construct($URL, $pageLimit, $advertBlockSP, $titleSP, $titleLinkSP, $priceSP, $imageAddressSP, $nextPageLinkSP);
   }
 
@@ -33,7 +33,7 @@ class kleinanzeigen_FleaMarket extends FleaMarket {
    * @return string result string which looks like usual URL with parameters after question mark.
    */
   public static function makeRequestURL(array $keyWords, int $priceFrom = null, int $priceTo = null, bool $checkDescription = false) :string {
-    
+
     $urlComponents = [
       self::getBaseURL(),
       self::$subjectPrefix . self::$advertisementType,
